@@ -52,6 +52,17 @@ a:hover{color:var(--cyan)}
 @media (prefers-reduced-motion:reduce){#beam,#flick,#crt{animation:none}}
 ::selection{background:var(--cyan);color:#04101a}
 @media (max-width:640px){#crt{border-radius:10px;width:100vw;height:100dvh}#screen{padding:14px 12px 70px}#bar .barlabel{display:none}#bar{height:30px;font-size:11px}.t,.p{font-size:13px}#inp{font-size:16px}}
+@keyframes glitch{0%{transform:translate(0) skewX(0);filter:none}10%{transform:translate(-3px,2px) skewX(3deg);filter:hue-rotate(90deg)}20%{transform:translate(3px,-2px) skewX(-3deg);filter:hue-rotate(180deg)}30%{transform:translate(-2px,1px);filter:hue-rotate(270deg)}40%{transform:translate(2px,-1px);filter:hue-rotate(360deg)}50%{transform:translate(-1px,2px)}60%{transform:translate(1px,-2px)}70%{transform:translate(-2px,1px)}80%{transform:translate(2px,-1px)}90%{transform:translate(-1px,1px)}100%{transform:translate(0);filter:none}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
+#output.glitching{animation:glitch .4s linear}
+#output.shaking{animation:shake .3s linear}
+.game-box{margin:12px 0;padding:14px 16px;border:1px solid var(--cyan);border-radius:8px;background:rgba(0,0,0,.3);box-shadow:0 0 20px rgba(63,228,255,.1);text-align:center}
+.game-box pre{font-family:inherit;font-size:12px;line-height:1.1;letter-spacing:1px;margin:0;display:inline-block;text-align:left;color:var(--fg);text-shadow:var(--glow)}
+.game-hud{margin-bottom:10px;font-size:12px;color:var(--dim)}
+.game-hud .sc{color:var(--cyan);font-weight:700}
+.g2048{display:inline-grid;grid-template-columns:repeat(4,52px);gap:5px}
+.g2048 .cell{width:52px;height:52px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;background:rgba(255,255,255,.05);color:var(--fg)}
+@media (max-width:640px){.game-box pre{font-size:9px}.g2048{grid-template-columns:repeat(4,42px)}.g2048 .cell{width:42px;height:42px;font-size:15px}}
 </style>
 </head>
 <body>
@@ -61,8 +72,8 @@ a:hover{color:var(--cyan)}
     <span class="barlabel" id="barlabel">guest@rk — vsh</span>
     <span class="spacer"></span>
     <button class="chip" data-cmd="help">help</button>
+    <button class="chip" data-cmd="games">games</button>
     <button class="chip" data-cmd="projects">projects</button>
-    <button class="chip" data-cmd="socials">socials</button>
     <button class="chip" data-cmd="clear">clear</button>
   </div>
   <div id="screen">
@@ -82,13 +93,11 @@ a:hover{color:var(--cyan)}
 const DATA = {
   name: 'Rk',
   handle: 'rk',
-  site: 'rkg1s.github.io',
   role: 'developer · maker of random things',
   tagline: 'bots · tools · small systems with big opinions',
   discordProfile: 'https://discord.com/users/1010224761936281680',
   socials: [
     ['github', 'https://github.com/Rkg1s'],
-    ['website', 'https://rkg1s.github.io'],
   ],
   about: [
     'Hi — I go by Rk.',
@@ -192,9 +201,32 @@ function figlet(word){
 }
 
 const $ = id => document.getElementById(id);
-const out = $('output'), scr = $('screen'), inp = $('inp');
+const out = $('output'), scr = $('screen'), inp = $('inp'), crt = $('crt');
 const T0 = Date.now();
 const hist = []; let hi = 0;
+
+let audioCtx = null;
+let soundOn = true;
+try { soundOn = localStorage.getItem('vsh-sound') !== 'off'; } catch(e) {}
+function beep(freq, dur, type, vol) {
+  if (!soundOn) return;
+  freq = freq || 440; dur = dur || 0.05; type = type || 'square'; vol = vol || 0.04;
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e) { return; }
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + dur);
+  } catch(e) {}
+}
 
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function line(html, cls){
@@ -235,14 +267,414 @@ function copyText(t){
   }
   return Promise.resolve(fallback());
 }
+function glitchAndShake(){
+  out.classList.remove('glitching','shaking');
+  void out.offsetWidth;
+  out.classList.add('glitching','shaking');
+  setTimeout(() => out.classList.remove('glitching'), 450);
+  setTimeout(() => out.classList.remove('shaking'), 320);
+}
+
+const gameManager = {
+  game: null,
+  start(g){ this.game = g; beep(660, 0.05); },
+  stop(){
+    if (this.game) { try { this.game.stop(); } catch(e) {} this.game = null; }
+    inp.value = '';
+    if (!document.querySelector('#inline[hidden]')) inp.focus({ preventScroll: true });
+  }
+};
+
+function createSnake(){
+  const W = 30, H = 16;
+  const box = document.createElement('div');
+  box.className = 'game-box';
+  box.innerHTML = '<div class="game-hud">snake · score: <span class="sc" id="snake-sc">0</span> · arrows/wasd · q to quit</div>';
+  const pre = document.createElement('pre');
+  box.appendChild(pre);
+  out.appendChild(box);
+  scr.scrollTop = scr.scrollHeight;
+
+  let snake = [{x:15, y:8}];
+  let dir = {x:1, y:0}, nextDir = dir;
+  let food = spawnFood();
+  let score = 0, speed = 130, alive = true, timer = null;
+
+  function spawnFood(){
+    while (true) {
+      const f = {x: Math.floor(Math.random()*W), y: Math.floor(Math.random()*H)};
+      if (!snake.some(s => s.x === f.x && s.y === f.y)) return f;
+    }
+  }
+  function render(){
+    const rows = [];
+    for (let y = 0; y < H; y++) {
+      let row = '';
+      for (let x = 0; x < W; x++) {
+        if (snake[0].x === x && snake[0].y === y) row += '██';
+        else if (snake.some(s => s.x === x && s.y === y)) row += '▓▓';
+        else if (food.x === x && food.y === y) row += '●●';
+        else row += '  ';
+      }
+      rows.push(row);
+    }
+    pre.textContent = rows.join('\n');
+    const sc = document.getElementById('snake-sc');
+    if (sc) sc.textContent = score;
+  }
+  function tick(){
+    if (!alive) return;
+    dir = nextDir;
+    const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+    if (head.x < 0 || head.x >= W || head.y < 0 || head.y >= H || snake.some(s => s.x === head.x && s.y === head.y)) {
+      alive = false;
+      beep(80, 0.3, 'sawtooth');
+      const hud = box.querySelector('.game-hud');
+      hud.innerHTML = '<span class="red bold">GAME OVER</span> · score: <span class="sc">' + score + '</span> · press any key or esc';
+      return;
+    }
+    snake.unshift(head);
+    if (head.x === food.x && head.y === food.y) {
+      score += 10; beep(880, 0.06); food = spawnFood();
+      if (speed > 65) speed -= 2;
+    } else snake.pop();
+    render();
+    timer = setTimeout(tick, speed);
+  }
+  function die(){ alive = false; if (timer) clearTimeout(timer); }
+  render();
+  timer = setTimeout(tick, 400);
+  return {
+    onKey(e){
+      e.preventDefault();
+      if (!alive) { gameManager.stop(); return; }
+      const k = e.key.toLowerCase();
+      if (k === 'q') { gameManager.stop(); return; }
+      if ((k === 'arrowup' || k === 'w') && dir.y !== 1) nextDir = {x:0, y:-1};
+      else if ((k === 'arrowdown' || k === 's') && dir.y !== -1) nextDir = {x:0, y:1};
+      else if ((k === 'arrowleft' || k === 'a') && dir.x !== 1) nextDir = {x:-1, y:0};
+      else if ((k === 'arrowright' || k === 'd') && dir.x !== -1) nextDir = {x:1, y:0};
+    },
+    stop(){ die(); box.remove(); }
+  };
+}
+
+function create2048(){
+  const box = document.createElement('div');
+  box.className = 'game-box';
+  const hud = document.createElement('div');
+  hud.className = 'game-hud';
+  const board = document.createElement('div');
+  board.className = 'g2048';
+  box.appendChild(hud);
+  box.appendChild(board);
+  out.appendChild(box);
+  scr.scrollTop = scr.scrollHeight;
+
+  let grid = Array(4).fill(0).map(() => Array(4).fill(0));
+  let score = 0, alive = true;
+
+  function spawn(){
+    const empty = [];
+    for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) if (grid[y][x] === 0) empty.push({x, y});
+    if (!empty.length) return;
+    const c = empty[Math.floor(Math.random() * empty.length)];
+    grid[c.y][c.x] = Math.random() < 0.9 ? 2 : 4;
+  }
+  function colors(v){
+    if (v === 0) return 'rgba(255,255,255,.04)';
+    if (v === 2) return 'rgba(63,228,255,.18)';
+    if (v === 4) return 'rgba(63,228,255,.32)';
+    if (v === 8) return 'rgba(167,139,250,.35)';
+    if (v === 16) return 'rgba(167,139,250,.5)';
+    if (v === 32) return 'rgba(255,203,92,.4)';
+    if (v === 64) return 'rgba(255,203,92,.6)';
+    if (v === 128) return 'rgba(255,107,138,.5)';
+    if (v === 256) return 'rgba(255,107,138,.7)';
+    return 'rgba(99,242,164,.65)';
+  }
+  function render(){
+    let html = '';
+    for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
+      const v = grid[y][x];
+      const size = v >= 1024 ? '13px' : v >= 128 ? '15px' : '18px';
+      html += '<div class="cell" style="background:' + colors(v) + ';font-size:' + size + '">' + (v || '') + '</div>';
+    }
+    board.innerHTML = html;
+    hud.innerHTML = 'score: <span class="sc">' + score + '</span> · arrows/wasd · q to quit';
+  }
+  function slideLeft(g){
+    for (let y = 0; y < 4; y++) {
+      const row = g[y].filter(v => v);
+      for (let i = 0; i < row.length - 1; i++) {
+        if (row[i] === row[i+1]) { row[i] *= 2; score += row[i]; row.splice(i+1, 1); }
+      }
+      while (row.length < 4) row.push(0);
+      g[y] = row;
+    }
+  }
+  function transpose(g){
+    const ng = [];
+    for (let x = 0; x < 4; x++) { ng.push([]); for (let y = 0; y < 4; y++) ng[x].push(g[y][x]); }
+    return ng;
+  }
+  function revRows(g){ return g.map(r => r.slice().reverse()); }
+  function clone(g){ return g.map(r => r.slice()); }
+  function isDead(g){
+    for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
+      if (g[y][x] === 0) return false;
+      if (x < 3 && g[y][x] === g[y][x+1]) return false;
+      if (y < 3 && g[y][x] === g[y+1][x]) return false;
+    }
+    return true;
+  }
+  function move(dir){
+    if (!alive) return;
+    const before = JSON.stringify(grid);
+    let g = clone(grid);
+    if (dir === 'left') slideLeft(g);
+    else if (dir === 'right') { g = revRows(g); slideLeft(g); g = revRows(g); }
+    else if (dir === 'up') { g = transpose(g); slideLeft(g); g = transpose(g); }
+    else if (dir === 'down') { g = transpose(g); g = revRows(g); slideLeft(g); g = revRows(g); g = transpose(g); }
+    if (JSON.stringify(g) !== before) {
+      grid = g; spawn(); render(); beep(520, 0.03);
+      if (isDead(grid)) {
+        alive = false;
+        beep(120, 0.4, 'sawtooth');
+        hud.innerHTML = '<span class="red bold">GAME OVER</span> · score: <span class="sc">' + score + '</span> · press any key or esc';
+      }
+    }
+  }
+  spawn(); spawn(); render();
+  return {
+    onKey(e){
+      e.preventDefault();
+      if (!alive) { gameManager.stop(); return; }
+      const k = e.key.toLowerCase();
+      if (k === 'q') { gameManager.stop(); return; }
+      if (k === 'arrowleft' || k === 'a') move('left');
+      else if (k === 'arrowright' || k === 'd') move('right');
+      else if (k === 'arrowup' || k === 'w') move('up');
+      else if (k === 'arrowdown' || k === 's') move('down');
+    },
+    stop(){ box.remove(); }
+  };
+}
+
+function createTTT(){
+  const box = document.createElement('div');
+  box.className = 'game-box';
+  const hud = document.createElement('div');
+  hud.className = 'game-hud';
+  const body = document.createElement('pre');
+  body.style.fontSize = '16px';
+  body.style.lineHeight = '1.4';
+  box.appendChild(hud);
+  box.appendChild(body);
+  out.appendChild(box);
+  scr.scrollTop = scr.scrollHeight;
+
+  let b = Array(9).fill(' ');
+  let turn = 'X', done = false;
+
+  function render(){
+    const c = (i) => b[i] === ' ' ? (i+1) : b[i];
+    body.innerHTML = '<span class="dim">┌───┬───┬───┐</span>\n' +
+      '<span class="dim">│</span> ' + c(0) + ' <span class="dim">│</span> ' + c(1) + ' <span class="dim">│</span> ' + c(2) + ' <span class="dim">│</span>\n' +
+      '<span class="dim">├───┼───┼───┤</span>\n' +
+      '<span class="dim">│</span> ' + c(3) + ' <span class="dim">│</span> ' + c(4) + ' <span class="dim">│</span> ' + c(5) + ' <span class="dim">│</span>\n' +
+      '<span class="dim">├───┼───┼───┤</span>\n' +
+      '<span class="dim">│</span> ' + c(6) + ' <span class="dim">│</span> ' + c(7) + ' <span class="dim">│</span> ' + c(8) + ' <span class="dim">│</span>\n' +
+      '<span class="dim">└───┴───┴───┘</span>';
+    hud.innerHTML = done ? 'game over · q or esc' : 'you are <span class="cyan bold">X</span> · type cell 1-9 + enter · q to quit';
+  }
+  function winner(){
+    const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    for (const [a,b2,c] of lines) if (b[a] !== ' ' && b[a] === b[b2] && b[a] === b[c]) return b[a];
+    return b.every(v => v !== ' ') ? 'draw' : null;
+  }
+  function aiMove(){
+    const empty = b.map((v, i) => v === ' ' ? i : -1).filter(i => i >= 0);
+    if (!empty.length) return;
+    for (const i of empty) { b[i] = 'O'; if (winner() === 'O') return; b[i] = ' '; }
+    for (const i of empty) { b[i] = 'X'; if (winner() === 'X') { b[i] = 'O'; return; } b[i] = ' '; }
+    if (b[4] === ' ') { b[4] = 'O'; return; }
+    const pick = empty[Math.floor(Math.random() * empty.length)];
+    b[pick] = 'O';
+  }
+  function checkEnd(){
+    const w = winner();
+    if (w) {
+      done = true;
+      if (w === 'X') { beep(880, 0.15); hud.innerHTML = '<span class="green bold">you win!</span> · q or esc'; }
+      else if (w === 'O') { beep(200, 0.2); hud.innerHTML = '<span class="red bold">AI wins.</span> · q or esc'; }
+      else { hud.innerHTML = '<span class="amber">draw.</span> · q or esc'; }
+    }
+  }
+  render();
+  return {
+    onKey(e){
+      if (done) { e.preventDefault(); gameManager.stop(); return; }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const v = inp.value.trim();
+        inp.value = '';
+        if (v === 'q') { gameManager.stop(); return; }
+        const n = parseInt(v) - 1;
+        if (isNaN(n) || n < 0 || n > 8 || b[n] !== ' ') { beep(200, 0.08); return; }
+        b[n] = 'X'; beep(660, 0.04);
+        if (checkEnd()) { render(); return; }
+        aiMove();
+        render();
+        checkEnd();
+      }
+    },
+    stop(){ box.remove(); }
+  };
+}
+
+function createGuess(){
+  const box = document.createElement('div');
+  box.className = 'game-box';
+  box.innerHTML = '<div class="game-hud">guess 1-100 · <span class="sc">7</span> tries · q to quit</div><div class="game-body dim">type a number and press enter…</div>';
+  out.appendChild(box);
+  scr.scrollTop = scr.scrollHeight;
+  const body = box.querySelector('.game-body');
+  const target = Math.floor(Math.random() * 100) + 1;
+  let tries = 0, done = false;
+  function set(html){ body.innerHTML = html; scr.scrollTop = scr.scrollHeight; }
+  return {
+    onKey(e){
+      if (done) { e.preventDefault(); gameManager.stop(); return; }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const v = inp.value.trim(); inp.value = '';
+        if (!v) return;
+        if (v === 'q') { gameManager.stop(); return; }
+        const n = parseInt(v);
+        if (isNaN(n) || n < 1 || n > 100) { beep(200, 0.05); set('<span class="amber">enter a number 1-100</span>'); return; }
+        tries++;
+        if (n === target) { done = true; beep(880, 0.15); set('<span class="green bold">correct!</span> it was ' + target + ' · ' + tries + ' tries · press any key'); }
+        else if (tries >= 7) { done = true; beep(160, 0.25); set('<span class="red bold">out of tries.</span> it was ' + target + ' · press any key'); }
+        else {
+          beep(n > target ? 330 : 560, 0.05);
+          set((n > target ? '<span class="amber">lower ↓</span>' : '<span class="cyan">higher ↑</span>') + ' · ' + (7 - tries) + ' tries left');
+        }
+      }
+    },
+    stop(){ box.remove(); }
+  };
+}
+
+function createHangman(){
+  const words = ['terminal','javascript','hacker','matrix','pixel','runtime','kernel','buffer','glitch','synth','discord','server'];
+  const word = words[Math.floor(Math.random() * words.length)];
+  const guessed = new Set();
+  let wrong = 0, done = false;
+  const stages = [
+    '  +---+\n  |   |\n      |\n      |\n      |\n      |\n=========',
+    '  +---+\n  |   |\n  O   |\n      |\n      |\n      |\n=========',
+    '  +---+\n  |   |\n  O   |\n  |   |\n      |\n      |\n=========',
+    '  +---+\n  |   |\n  O   |\n /|   |\n      |\n      |\n=========',
+    '  +---+\n  |   |\n  O   |\n /|\\  |\n      |\n      |\n=========',
+    '  +---+\n  |   |\n  O   |\n /|\\  |\n /    |\n      |\n=========',
+    '  +---+\n  |   |\n  O   |\n /|\\  |\n / \\  |\n      |\n========='
+  ];
+  const box = document.createElement('div');
+  box.className = 'game-box';
+  const hud = document.createElement('div');
+  hud.className = 'game-hud';
+  const art = document.createElement('pre');
+  art.style.fontSize = '13px';
+  const wordEl = document.createElement('div');
+  wordEl.style.marginTop = '10px';
+  wordEl.style.fontSize = '20px';
+  wordEl.style.letterSpacing = '6px';
+  box.appendChild(hud); box.appendChild(art); box.appendChild(wordEl);
+  out.appendChild(box);
+  scr.scrollTop = scr.scrollHeight;
+  function render(){
+    art.textContent = stages[wrong];
+    wordEl.textContent = word.split('').map(c => guessed.has(c) || done ? c : '_').join(' ');
+    hud.innerHTML = 'hangman · wrong: <span class="sc">' + wrong + '/6</span> · guess a letter + enter · q to quit';
+  }
+  function checkEnd(){
+    if (word.split('').every(c => guessed.has(c))) {
+      done = true; beep(880, 0.2);
+      hud.innerHTML = '<span class="green bold">you got it!</span> word: ' + word + ' · any key';
+    } else if (wrong >= 6) {
+      done = true; beep(120, 0.3, 'sawtooth');
+      hud.innerHTML = '<span class="red bold">you died.</span> word was: ' + word + ' · any key';
+    }
+  }
+  render();
+  return {
+    onKey(e){
+      if (done) { e.preventDefault(); gameManager.stop(); return; }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const v = inp.value.trim().toLowerCase(); inp.value = '';
+        if (!v) return;
+        if (v === 'q') { gameManager.stop(); return; }
+        const ch = v[0];
+        if (!/[a-z]/.test(ch) || guessed.has(ch)) { beep(200, 0.05); return; }
+        guessed.add(ch);
+        if (word.includes(ch)) { beep(660, 0.04); } else { wrong++; beep(220, 0.1); }
+        render(); checkEnd();
+      }
+    },
+    stop(){ box.remove(); }
+  };
+}
+
+function createReaction(){
+  const box = document.createElement('div');
+  box.className = 'game-box';
+  const hud = document.createElement('div');
+  hud.className = 'game-hud';
+  const body = document.createElement('div');
+  body.className = 'dim';
+  body.style.padding = '20px 0';
+  body.textContent = 'wait for the cue…';
+  box.appendChild(hud); box.appendChild(body);
+  out.appendChild(box);
+  scr.scrollTop = scr.scrollHeight;
+  let armed = false, t0 = 0, stopped = false;
+  hud.innerHTML = 'reaction test · wait for green · q to quit';
+  const timeout = setTimeout(() => {
+    if (stopped) return;
+    armed = true;
+    t0 = performance.now();
+    body.innerHTML = '<span class="green bold" style="font-size:24px">PRESS ANY KEY NOW</span>';
+    beep(880, 0.1);
+  }, 1400 + Math.random() * 2800);
+  return {
+    onKey(e){
+      e.preventDefault();
+      if (stopped) return;
+      if (!armed) {
+        stopped = true; clearTimeout(timeout);
+        body.innerHTML = '<span class="red bold">too early!</span> wait for the cue.';
+        beep(180, 0.2); hud.innerHTML = 'press any key to exit';
+        return;
+      }
+      const ms = Math.round(performance.now() - t0);
+      stopped = true;
+      const label = ms < 180 ? 'lightning ⚡' : ms < 280 ? 'quick' : ms < 450 ? 'solid' : 'keep practicing';
+      body.innerHTML = 'reaction: <span class="cyan bold">' + ms + 'ms</span> · ' + label;
+      beep(ms < 250 ? 880 : 440, 0.1);
+      hud.innerHTML = 'press any key to exit';
+    },
+    stop(){ stopped = true; clearTimeout(timeout); box.remove(); }
+  };
+}
 
 function banner(){
   figlet(DATA.name).forEach(l => line(esc(l), 'cyan banner'));
   line('<span class="bold">' + esc(DATA.name) + '</span> <span class="dim">—</span> <span class="violet">' + esc(DATA.role) + '</span>');
   line('<span class="dim">' + esc(DATA.tagline) + '</span>');
-  line('<span class="dim">site:</span> ' + link('https://' + DATA.site));
   blank();
-  line('type ' + runChip('help', 'help') + ' to look around · ' + runChip('projects', 'projects') + ' for my work · ' + runChip('socials', 'socials') + ' to find me');
+  line('type ' + runChip('help', 'help') + ' to look around · ' + runChip('projects', 'projects') + ' for my work · ' + runChip('games', 'games') + ' to play');
   blank();
 }
 function skillLines(){
@@ -256,13 +688,10 @@ function socialLines(){
   DATA.socials.forEach(s => rows.push('  ' + pad(s[0], 10) + link(s[1])));
   return rows;
 }
-function copyChip(){
-  return '<span class="chiprun" data-copy="' + esc(DATA.discordProfile) + '">[copy link]</span>';
-}
+function copyChip(){ return '<span class="chiprun" data-copy="' + esc(DATA.discordProfile) + '">[copy link]</span>'; }
 function contactLines(){
   return [
     '  fastest  : ' + link(DATA.discordProfile, 'discord dm') + '  ' + copyChip(),
-    '  website  : ' + link('https://' + DATA.site),
     '  email    : none — dms only',
     '',
     '  i answer within ~24h. no small talk needed — just say what you need.',
@@ -298,18 +727,23 @@ def(['help'], () => {
      ['socials','everywhere i exist'],['discord','copy my discord profile link'],['contact','reach me'],
    ['open <site>','open a link in a new tab']]
     .forEach(c => line('  ' + pad(c[0], 17) + '<span class="dim">' + c[1] + '</span>'));
+  line('<span class="cyan bold">GAMES</span>');
+  [['games','list all games'],['snake','classic snake'],['2048','the sliding tile game'],
+     ['ttt','tic-tac-toe vs AI'],['guess','number guesser'],['hangman','word guesser'],['reaction','reaction time test']]
+    .forEach(c => line('  ' + pad(c[0], 17) + '<span class="dim">' + c[1] + '</span>'));
   line('<span class="cyan bold">SYSTEM</span>');
-  [['ls / cat <file>','fake filesystem — try: cat about.txt'],['neofetch','system info, flex edition'],
-   ['theme <name>','cyan · amber · green · paper'],['whoami','existential inquiry'],['banner','title screen'],
+  [['ls / cat <file>','fake filesystem'],['neofetch','system info, flex edition'],['sysinfo','deep diagnostics'],
+   ['theme <name>','cyan · amber · green · paper'],['sound [on|off]','toggle beeps'],
+   ['matrix','enter the matrix'],['hack','hollywood hack sequence'],
    ['date · echo · history','the classics'],['clear','wipe the screen (ctrl+L)']]
     .forEach(c => line('  ' + pad(c[0], 17) + '<span class="dim">' + c[1] + '</span>'));
   line('<span class="cyan bold">SECRETS</span>');
   line('  ' + pad('sudo · exit · rm', 17) + '<span class="dim">…try them and see</span>');
   blank();
-  line('<span class="dim">tip: tab completes · ↑/↓ walks history · ctrl+L clears</span>');
+  line('<span class="dim">tip: tab completes · ↑/↓ walks history · ctrl+L clears · esc exits games</span>');
 });
 def(['clear'], () => { out.innerHTML = ''; });
-def(['banner'], banner);
+def(['banner'], () => { out.innerHTML = ''; banner(); });
 def(['about'], () => { FILES['about.txt']().forEach(l => line(l)); blank(); line('<span class="dim">see also: ' + runChip('skills', 'skills') + ' · ' + runChip('projects', 'projects') + '</span>'); });
 def(['projects', 'work'], () => {
   blank();
@@ -333,16 +767,7 @@ def(['discord'], () => {
 def(['open'], args => {
   const q = (args[0] || '').toLowerCase();
   if (!q) { line('open what? try: ' + DATA.socials.map(s => '<span class="dim">' + s[0] + '</span>').join(' · ') + ' · <span class="dim">discord</span>'); return; }
-  if (q === 'discord' || q === 'dc') {
-    window.open(DATA.discordProfile, '_blank', 'noopener');
-    line('opening discord profile … ' + link(DATA.discordProfile));
-    return;
-  }
-  if (q === 'site' || q === 'website') {
-    window.open('https://' + DATA.site, '_blank', 'noopener');
-    line('opening ' + link('https://' + DATA.site) + ' …');
-    return;
-  }
+  if (q === 'discord' || q === 'dc') { window.open(DATA.discordProfile, '_blank', 'noopener'); line('opening discord profile … ' + link(DATA.discordProfile)); return; }
   const hit = DATA.socials.find(s => s[0].indexOf(q) === 0);
   if (!hit) { line('<span class="red">no link called "' + esc(q) + '"</span> — run ' + runChip('socials', 'socials')); return; }
   window.open(hit[1], '_blank', 'noopener');
@@ -375,15 +800,29 @@ def(['neofetch'], () => {
   const info = [
     '<span class="cyan">guest@' + esc(DATA.handle) + '</span>',
     '<span class="dim">---------------</span>',
-    'site    : <span class="dim">' + esc(DATA.site) + '</span>',
     'role    : <span class="dim">' + esc(DATA.role) + '</span>',
-    'shell   : <span class="dim">vsh 1.0 (web)</span>',
+    'shell   : <span class="dim">vsh 2.0 (web)</span>',
     'uptime  : <span class="dim">' + uptime() + '</span>',
     'theme   : <span class="dim">' + (document.documentElement.dataset.theme || 'cyan') + '</span>',
+    'sound   : <span class="dim">' + (soundOn ? 'on' : 'off') + '</span>',
     'projects: <span class="dim">' + DATA.projects.length + ' · skills: ' + DATA.skills.length + '</span>',
     'coffee  : <span class="amber">∞ (brewing)</span>',
   ];
   for (let i = 0; i < info.length; i++) line('<span class="cyan">' + esc(pad(art[i], 12)) + '</span>' + info[i]);
+});
+def(['sysinfo'], () => {
+  blank();
+  line('<span class="cyan bold">SYSTEM DIAGNOSTICS</span>');
+  line('  os       : vsh-web 2.0 (browser kernel)');
+  line('  ua       : ' + esc((navigator.userAgent || '').slice(0, 60)) + '…');
+  line('  cores    : ' + (navigator.hardwareConcurrency || '?'));
+  line('  memory   : ' + (navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'hidden by browser'));
+  line('  language : ' + esc(navigator.language || '?'));
+  line('  uptime   : ' + uptime());
+  line('  theme    : ' + esc(document.documentElement.dataset.theme || 'cyan'));
+  line('  sound    : ' + (soundOn ? 'on' : 'off'));
+  line('  games    : snake · 2048 · ttt · guess · hangman · reaction');
+  blank();
 });
 def(['whoami'], () => { line('guest <span class="dim">— but the interesting one is</span> <span class="bold">' + esc(DATA.name) + '</span>. run ' + runChip('about', 'about') + '.'); });
 def(['date'], () => line(new Date().toString()));
@@ -397,6 +836,106 @@ def(['theme'], args => {
   setTheme(t);
   line('theme set to <span class="cyan">' + t + '</span> <span class="dim">(saved for next visit)</span>');
 });
+def(['sound'], args => {
+  const a = (args[0] || '').toLowerCase();
+  if (a === 'on') { soundOn = true; try{localStorage.setItem('vsh-sound','on');}catch(e){}; beep(660, 0.08); line('<span class="green">[ok]</span> sound on.'); return; }
+  if (a === 'off') { soundOn = false; try{localStorage.setItem('vsh-sound','off');}catch(e){}; line('<span class="dim">sound off.</span>'); return; }
+  line('sound: <span class="cyan">' + (soundOn ? 'on' : 'off') + '</span> · usage: sound [on|off]');
+});
+def(['games', 'play'], () => {
+  blank();
+  line('<span class="cyan bold">MINIGAMES</span> <span class="dim">· esc or q exits any game</span>');
+  [['snake','arrow keys · eat apples, don\'t die'],
+   ['2048','arrow keys · merge tiles to 2048'],
+   ['ttt','type 1-9 · beat the AI'],
+   ['guess','find the number 1-100'],
+   ['hangman','guess the word before the rope'],
+   ['reaction','how fast are your reflexes?']]
+    .forEach(c => line('  ' + runChip(c[0], pad(c[0], 10)) + ' <span class="dim">' + c[1] + '</span>'));
+  blank();
+  line('<span class="dim">tip: sound effects play automatically · use</span> ' + runChip('sound off', 'sound off') + ' <span class="dim">to silence</span>');
+});
+def(['snake'], () => gameManager.start(createSnake()));
+def(['2048'], () => gameManager.start(create2048()));
+def(['ttt','tictactoe'], () => gameManager.start(createTTT()));
+def(['guess'], () => gameManager.start(createGuess()));
+def(['hangman'], () => gameManager.start(createHangman()));
+def(['reaction'], () => gameManager.start(createReaction()));
+
+def(['matrix'], () => {
+  if (document.getElementById('matrix-canvas')) return;
+  const canvas = document.createElement('canvas');
+  canvas.id = 'matrix-canvas';
+  canvas.style.cssText = 'position:absolute;inset:0;z-index:10;pointer-events:auto;cursor:pointer;background:rgba(0,0,0,.55);';
+  crt.appendChild(canvas);
+  canvas.width = crt.clientWidth;
+  canvas.height = crt.clientHeight;
+  const ctx = canvas.getContext('2d');
+  const fontSize = 14;
+  const cols = Math.floor(canvas.width / fontSize);
+  const drops = Array(cols).fill(1);
+  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789abcdefghijklmnopqrstuvwxyz';
+  let raf, stopped = false;
+  function draw(){
+    if (stopped) return;
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(59,255,125,0.9)';
+    ctx.font = fontSize + 'px monospace';
+    for (let i = 0; i < drops.length; i++) {
+      const ch = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillText(ch, i * fontSize, drops[i] * fontSize);
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
+    }
+    raf = requestAnimationFrame(draw);
+  }
+  function stop(){
+    if (stopped) return;
+    stopped = true;
+    cancelAnimationFrame(raf);
+    canvas.remove();
+    window.removeEventListener('keydown', onEsc);
+    line('<span class="green">welcome back.</span>');
+  }
+  function onEsc(e){ if (e.key === 'Escape') { e.preventDefault(); stop(); } }
+  canvas.addEventListener('click', stop);
+  window.addEventListener('keydown', onEsc);
+  line('<span class="green bold">enter the matrix.</span> <span class="dim">click or esc to wake up.</span>');
+  draw();
+});
+
+let hackRunning = false;
+def(['hack'], () => {
+  if (hackRunning) { line('<span class="amber">hack already in progress</span>'); return; }
+  hackRunning = true;
+  const steps = [
+    ['> initializing exploit framework', 150],
+    ['> scanning 65,535 ports on target', 300],
+    ['> found open: 22 (ssh), 80 (http), 443 (https)', 250],
+    ['> attempting ssh handshake', 400],
+    ['> cracking rsa private key', 600],
+    ['> bypassing perimeter firewall', 250],
+    ['> exfiltrating 1.2GB from /var/db', 800],
+    ['> wiping access logs', 300],
+    ['> planting persistent backdoor', 350],
+  ];
+  let i = 0;
+  function next(){
+    if (i >= steps.length) {
+      line('<span class="green bold">> ACCESS GRANTED. welcome, agent.</span>');
+      beep(880, 0.2);
+      hackRunning = false;
+      return;
+    }
+    line(steps[i][0], 'dim');
+    beep(440 + i * 60, 0.03, 'sine');
+    const d = steps[i][1]; i++;
+    setTimeout(next, d);
+  }
+  next();
+});
+
 def(['sudo'], args => {
   if (args.join(' ').indexOf('hire') !== -1) {
     line('<span class="amber">[sudo] hiring protocol engaged.</span>');
@@ -438,6 +977,8 @@ function nope(orig){
   });
   line('vsh: ' + esc(orig) + ': command not found' + (best ? ' <span class="dim">— did you mean</span> ' + runChip(best, best) + '<span class="dim">?</span>' : ''));
   line('<span class="dim">run</span> ' + runChip('help', 'help') + '<span class="dim"> for the menu</span>');
+  beep(160, 0.15, 'square');
+  glitchAndShake();
 }
 function editDist(a, b){
   const m = a.length, n = b.length;
@@ -449,6 +990,7 @@ function editDist(a, b){
 }
 
 function run(raw){
+  if (gameManager.game) { line('<span class="amber">a game is running — esc or q first</span>'); return; }
   echoInput(raw);
   const s = raw.trim();
   if (!s) return;
@@ -456,18 +998,21 @@ function run(raw){
   const parts = s.split(/\s+/);
   const c = CMDS[parts[0].toLowerCase()];
   if (!c || String(parts[0])[0] === '_') { nope(parts[0]); return; }
+  beep(520, 0.025);
   try { c(parts.slice(1)); }
   catch (err) { line('<span class="red">vsh: internal error — ' + esc(err.message) + '</span>'); }
 }
 
 inp.addEventListener('keydown', e => {
+  if (gameManager.game) {
+    if (e.key === 'Escape') { e.preventDefault(); gameManager.stop(); return; }
+    gameManager.game.onKey(e);
+    return;
+  }
   if (e.key === 'Enter') { const v = inp.value; inp.value = ''; run(v); }
   else if (e.key === 'ArrowUp') { e.preventDefault(); if (hi > 0) { hi--; inp.value = hist[hi] || ''; } }
   else if (e.key === 'ArrowDown') { e.preventDefault(); if (hi < hist.length) { hi++; inp.value = hist[hi] || ''; } }
-  else if (e.key === 'Tab') {
-    e.preventDefault();
-    complete();
-  }
+  else if (e.key === 'Tab') { e.preventDefault(); complete(); }
   else if (e.ctrlKey && (e.key === 'l' || e.key === 'L')) { e.preventDefault(); out.innerHTML = ''; }
   else if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) { echoInput(inp.value + '^C'); inp.value = ''; }
 });
@@ -477,9 +1022,10 @@ function complete(){
   if (parts.length <= 1) pool = Object.keys(CMDS).filter(k => !k.startsWith('_'));
   else {
     pool = Object.keys(FILES).map(k => k.replace(/\.md$/, ''))
-      .concat(['projects'], DATA.socials.map(s => s[0]), ['discord', 'site'], ['cyan', 'amber', 'green', 'paper']);
+      .concat(['projects'], DATA.socials.map(s => s[0]), ['discord'], ['cyan', 'amber', 'green', 'paper'], ['on','off']);
     if (parts[0].toLowerCase() === 'theme') pool = ['cyan', 'amber', 'green', 'paper'];
-    if (parts[0].toLowerCase() === 'open') pool = DATA.socials.map(s => s[0]).concat(['discord', 'site']);
+    if (parts[0].toLowerCase() === 'open') pool = DATA.socials.map(s => s[0]).concat(['discord']);
+    if (parts[0].toLowerCase() === 'sound') pool = ['on', 'off'];
   }
   const hits = pool.filter(p => p.indexOf(last) === 0 && p !== last);
   if (!hits.length) return;
@@ -510,13 +1056,18 @@ function setTheme(t){
 try { setTheme(localStorage.getItem('vsh-theme') || 'cyan'); } catch (e) { setTheme('cyan'); }
 
 const BOOT = [
-  '[ 0.000001] vsh v1.0 — virtual shell',
-  '[ 0.000047] tty0: 80×25 → ∞ … ok',
-  '[ 0.000121] mounting /projects … ok',
-  '[ 0.000193] warming phosphor … ok',
-  '[ 0.000240] linking discord bridge … ok',
-  '[ 0.000311] resolving rkg1s.github.io … ok',
-  '[ 0.000389] all systems nominal',
+  '[    0.000000] vsh: virtual shell v2.0 (web x86_64)',
+  '[    0.000021] bios: rkg1s custom firmware v2.1',
+  '[    0.000047] cpu: virtual-core @ 4.2GHz x4',
+  '[    0.000089] mem: 16384K/16384K available',
+  '[    0.000121] tty0: 80x25 -> infinity ... ok',
+  '[    0.000158] mounting /projects ... ok',
+  '[    0.000193] mounting /games ... ok',
+  '[    0.000221] warming phosphor ... ok',
+  '[    0.000240] linking discord bridge ... ok',
+  '[    0.000265] loading theme engine ... ok',
+  '[    0.000289] initializing audio system ... ok',
+  '[    0.000389] starting vsh ... [ OK ]',
 ];
 let booting = true, bootTimer = null, bi = 0;
 $('barlabel').textContent = 'guest@' + DATA.handle + ' — vsh';
@@ -525,7 +1076,7 @@ document.title = DATA.name + ' · terminal portfolio';
 function bootStep(){
   if (bi >= BOOT.length) { booting = false; finishBoot(); return; }
   line(esc(BOOT[bi]), 'faint'); bi++;
-  bootTimer = setTimeout(bootStep, 90);
+  bootTimer = setTimeout(bootStep, 80);
 }
 function skipBoot(){
   if (!booting) return;
