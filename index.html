@@ -72,6 +72,7 @@ a:hover{color:var(--cyan)}
     <span class="barlabel" id="barlabel">guest@rk — vsh</span>
     <span class="spacer"></span>
     <button class="chip" data-cmd="help">help</button>
+    <button class="chip" data-cmd="music">music</button>
     <button class="chip" data-cmd="games">games</button>
     <button class="chip" data-cmd="projects">projects</button>
     <button class="chip" data-cmd="clear">clear</button>
@@ -205,6 +206,7 @@ const out = $('output'), scr = $('screen'), inp = $('inp'), crt = $('crt');
 const T0 = Date.now();
 const hist = []; let hi = 0;
 
+/* ── sound ── */
 let audioCtx = null;
 let soundOn = true;
 try { soundOn = localStorage.getItem('vsh-sound') !== 'off'; } catch(e) {}
@@ -228,6 +230,7 @@ function beep(freq, dur, type, vol) {
   } catch(e) {}
 }
 
+/* ── helpers ── */
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function line(html, cls){
   const d = document.createElement('div');
@@ -275,6 +278,55 @@ function glitchAndShake(){
   setTimeout(() => out.classList.remove('shaking'), 320);
 }
 
+/* ── page overlay ── */
+function openOverlay(url) {
+  if (document.getElementById('overlay-frame')) return;
+  if (gameManager.game) { line('<span class="amber">a game is running — esc first</span>'); return; }
+
+  const wrap = document.createElement('div');
+  wrap.id = 'overlay-frame';
+  wrap.style.cssText = 'position:absolute;inset:0;z-index:11;background:var(--bg);display:flex;flex-direction:column;';
+
+  const bar = document.createElement('div');
+  bar.style.cssText = 'height:34px;display:flex;align-items:center;gap:8px;padding:0 12px;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.06);font-size:12px;color:var(--dim);user-select:none;';
+  bar.innerHTML = '<span style="width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 9px var(--green);flex:none"></span>'
+    + '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(url) + '</span>'
+    + '<button id="overlay-close" style="cursor:pointer;font:inherit;color:var(--dim);background:none;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:2px 9px;flex:none">✕ close (esc)</button>';
+
+  const iframe = document.createElement('iframe');
+  iframe.src = url;
+  iframe.style.cssText = 'flex:1;border:0;background:var(--bg);width:100%;';
+
+  wrap.appendChild(bar);
+  wrap.appendChild(iframe);
+  crt.appendChild(wrap);
+  inp.blur();
+
+  function close(){
+    wrap.remove();
+    window.removeEventListener('keydown', onEsc);
+    window.removeEventListener('message', onMsg);
+    inp.focus({ preventScroll: true });
+  }
+  function onEsc(e){ if (e.key === 'Escape') { e.preventDefault(); close(); } }
+  function onMsg(e){ if (e.data && e.data.type === 'close-overlay') close(); }
+  document.getElementById('overlay-close').addEventListener('click', close);
+  window.addEventListener('keydown', onEsc);
+  window.addEventListener('message', onMsg);
+
+  iframe.addEventListener('load', () => {
+    try { iframe.focus(); } catch(e) {}
+    try {
+      iframe.contentWindow.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); close(); }
+      });
+    } catch(err) {}
+  });
+
+  beep(660, 0.05);
+}
+
+/* ── game manager ── */
 const gameManager = {
   game: null,
   start(g){ this.game = g; beep(660, 0.05); },
@@ -285,6 +337,7 @@ const gameManager = {
   }
 };
 
+/* ── games ── */
 function createSnake(){
   const W = 30, H = 16;
   const box = document.createElement('div');
@@ -475,7 +528,7 @@ function createTTT(){
   scr.scrollTop = scr.scrollHeight;
 
   let b = Array(9).fill(' ');
-  let turn = 'X', done = false;
+  let done = false;
 
   function render(){
     const c = (i) => b[i] === ' ' ? (i+1) : b[i];
@@ -517,9 +570,10 @@ function createTTT(){
       if (done) { e.preventDefault(); gameManager.stop(); return; }
       if (e.key === 'Enter') {
         e.preventDefault();
-        const v = inp.value.trim();
+        const v = inp.value.trim().toLowerCase();
         inp.value = '';
-        if (v === 'q') { gameManager.stop(); return; }
+        if (!v) return;
+        if (v === 'q' || v === 'quit' || v === 'exit') { gameManager.stop(); return; }
         const n = parseInt(v) - 1;
         if (isNaN(n) || n < 0 || n > 8 || b[n] !== ' ') { beep(200, 0.08); return; }
         b[n] = 'X'; beep(660, 0.04);
@@ -548,9 +602,9 @@ function createGuess(){
       if (done) { e.preventDefault(); gameManager.stop(); return; }
       if (e.key === 'Enter') {
         e.preventDefault();
-        const v = inp.value.trim(); inp.value = '';
+        const v = inp.value.trim().toLowerCase(); inp.value = '';
         if (!v) return;
-        if (v === 'q') { gameManager.stop(); return; }
+        if (v === 'q' || v === 'quit' || v === 'exit') { gameManager.stop(); return; }
         const n = parseInt(v);
         if (isNaN(n) || n < 1 || n > 100) { beep(200, 0.05); set('<span class="amber">enter a number 1-100</span>'); return; }
         tries++;
@@ -596,7 +650,7 @@ function createHangman(){
   function render(){
     art.textContent = stages[wrong];
     wordEl.textContent = word.split('').map(c => guessed.has(c) || done ? c : '_').join(' ');
-    hud.innerHTML = 'hangman · wrong: <span class="sc">' + wrong + '/6</span> · guess a letter + enter · q to quit';
+    hud.innerHTML = 'hangman · wrong: <span class="sc">' + wrong + '/6</span> · guess a letter + enter · <span class="amber">q = quit</span>';
   }
   function checkEnd(){
     if (word.split('').every(c => guessed.has(c))) {
@@ -613,9 +667,10 @@ function createHangman(){
       if (done) { e.preventDefault(); gameManager.stop(); return; }
       if (e.key === 'Enter') {
         e.preventDefault();
-        const v = inp.value.trim().toLowerCase(); inp.value = '';
+        const v = inp.value.trim().toLowerCase();
+        inp.value = '';
         if (!v) return;
-        if (v === 'q') { gameManager.stop(); return; }
+        if (v === 'q' || v === 'quit' || v === 'exit') { gameManager.stop(); return; }
         const ch = v[0];
         if (!/[a-z]/.test(ch) || guessed.has(ch)) { beep(200, 0.05); return; }
         guessed.add(ch);
@@ -669,6 +724,7 @@ function createReaction(){
   };
 }
 
+/* ── content ── */
 function banner(){
   figlet(DATA.name).forEach(l => line(esc(l), 'cyan banner'));
   line('<span class="bold">' + esc(DATA.name) + '</span> <span class="dim">—</span> <span class="violet">' + esc(DATA.role) + '</span>');
@@ -719,6 +775,7 @@ function resolveFile(name){
   return null;
 }
 
+/* ── commands ── */
 const CMDS = {};
 function def(names, fn){ names.forEach(n => CMDS[n] = fn); }
 def(['help'], () => {
@@ -727,9 +784,13 @@ def(['help'], () => {
      ['socials','everywhere i exist'],['discord','copy my discord profile link'],['contact','reach me'],
    ['open <site>','open a link in a new tab']]
     .forEach(c => line('  ' + pad(c[0], 17) + '<span class="dim">' + c[1] + '</span>'));
+  line('<span class="cyan bold">PAGES</span>');
+  [['page <name>','open another html in overlay — try: page music'],
+   ['music','shortcut for page music'],['pages','list available pages']]
+    .forEach(c => line('  ' + pad(c[0], 17) + '<span class="dim">' + c[1] + '</span>'));
   line('<span class="cyan bold">GAMES</span>');
   [['games','list all games'],['snake','classic snake'],['2048','the sliding tile game'],
-     ['ttt','tic-tac-toe vs AI'],['guess','number guesser'],['hangman','word guesser'],['reaction','reaction time test']]
+     ['ttt','tic-tac-toe vs AI'],['guess','number guesser'],['hangman','word guesser (q quits)'],['reaction','reaction time test']]
     .forEach(c => line('  ' + pad(c[0], 17) + '<span class="dim">' + c[1] + '</span>'));
   line('<span class="cyan bold">SYSTEM</span>');
   [['ls / cat <file>','fake filesystem'],['neofetch','system info, flex edition'],['sysinfo','deep diagnostics'],
@@ -740,7 +801,7 @@ def(['help'], () => {
   line('<span class="cyan bold">SECRETS</span>');
   line('  ' + pad('sudo · exit · rm', 17) + '<span class="dim">…try them and see</span>');
   blank();
-  line('<span class="dim">tip: tab completes · ↑/↓ walks history · ctrl+L clears · esc exits games</span>');
+  line('<span class="dim">tip: tab completes · ↑/↓ walks history · ctrl+L clears · esc exits overlays</span>');
 });
 def(['clear'], () => { out.innerHTML = ''; });
 def(['banner'], () => { out.innerHTML = ''; banner(); });
@@ -772,6 +833,25 @@ def(['open'], args => {
   if (!hit) { line('<span class="red">no link called "' + esc(q) + '"</span> — run ' + runChip('socials', 'socials')); return; }
   window.open(hit[1], '_blank', 'noopener');
   line('opening ' + link(hit[1]) + ' …');
+});
+def(['page', 'openpage'], args => {
+  const p = (args[0] || '').toLowerCase().replace(/\.html$/, '');
+  if (!p) { line('usage: page &lt;name&gt;  ·  try ' + runChip('page music', 'page music')); return; }
+  openOverlay(p + '.html');
+  line('opening <span class="cyan">' + esc(p) + '.html</span> in overlay… <span class="dim">(esc to close)</span>');
+});
+def(['pages'], () => {
+  blank();
+  line('<span class="cyan bold">PAGES</span> <span class="dim">· each opens in an overlay</span>');
+  line('  ' + runChip('page music', pad('music', 10)) + ' <span class="dim">a small playlist</span>');
+  line('  ' + runChip('page links', pad('links', 10)) + ' <span class="dim">(add links.html to enable)</span>');
+  line('  ' + runChip('page about', pad('about', 10)) + ' <span class="dim">(add about.html to enable)</span>');
+  blank();
+  line('<span class="dim">create any .html next to index.html and open it with</span> ' + runChip('page <name>', 'page <name>'));
+});
+def(['music'], () => {
+  openOverlay('music.html');
+  line('opening <span class="cyan">music.html</span> in overlay… <span class="dim">(esc to close)</span>');
 });
 def(['cat'], args => {
   const name = args.join(' ');
@@ -822,6 +902,7 @@ def(['sysinfo'], () => {
   line('  theme    : ' + esc(document.documentElement.dataset.theme || 'cyan'));
   line('  sound    : ' + (soundOn ? 'on' : 'off'));
   line('  games    : snake · 2048 · ttt · guess · hangman · reaction');
+  line('  pages    : music · (add more .html files)');
   blank();
 });
 def(['whoami'], () => { line('guest <span class="dim">— but the interesting one is</span> <span class="bold">' + esc(DATA.name) + '</span>. run ' + runChip('about', 'about') + '.'); });
@@ -849,7 +930,7 @@ def(['games', 'play'], () => {
    ['2048','arrow keys · merge tiles to 2048'],
    ['ttt','type 1-9 · beat the AI'],
    ['guess','find the number 1-100'],
-   ['hangman','guess the word before the rope'],
+   ['hangman','guess the word before the rope · q quits'],
    ['reaction','how fast are your reflexes?']]
     .forEach(c => line('  ' + runChip(c[0], pad(c[0], 10)) + ' <span class="dim">' + c[1] + '</span>'));
   blank();
@@ -990,6 +1071,7 @@ function editDist(a, b){
 }
 
 function run(raw){
+  if (document.getElementById('overlay-frame')) return;
   if (gameManager.game) { line('<span class="amber">a game is running — esc or q first</span>'); return; }
   echoInput(raw);
   const s = raw.trim();
@@ -1026,6 +1108,7 @@ function complete(){
     if (parts[0].toLowerCase() === 'theme') pool = ['cyan', 'amber', 'green', 'paper'];
     if (parts[0].toLowerCase() === 'open') pool = DATA.socials.map(s => s[0]).concat(['discord']);
     if (parts[0].toLowerCase() === 'sound') pool = ['on', 'off'];
+    if (parts[0].toLowerCase() === 'page') pool = ['music', 'links', 'about', 'blog'];
   }
   const hits = pool.filter(p => p.indexOf(last) === 0 && p !== last);
   if (!hits.length) return;
@@ -1063,10 +1146,11 @@ const BOOT = [
   '[    0.000121] tty0: 80x25 -> infinity ... ok',
   '[    0.000158] mounting /projects ... ok',
   '[    0.000193] mounting /games ... ok',
-  '[    0.000221] warming phosphor ... ok',
-  '[    0.000240] linking discord bridge ... ok',
-  '[    0.000265] loading theme engine ... ok',
-  '[    0.000289] initializing audio system ... ok',
+  '[    0.000221] mounting /pages ... ok',
+  '[    0.000240] warming phosphor ... ok',
+  '[    0.000265] linking discord bridge ... ok',
+  '[    0.000289] loading theme engine ... ok',
+  '[    0.000311] initializing audio system ... ok',
   '[    0.000389] starting vsh ... [ OK ]',
 ];
 let booting = true, bootTimer = null, bi = 0;
