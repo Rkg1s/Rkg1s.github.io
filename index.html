@@ -72,9 +72,9 @@ a:hover{color:var(--cyan)}
     <span class="barlabel" id="barlabel">guest@rk — vsh</span>
     <span class="spacer"></span>
     <button class="chip" data-cmd="help">help</button>
-    <button class="chip" data-cmd="music">music</button>
-    <button class="chip" data-cmd="games">games</button>
     <button class="chip" data-cmd="projects">projects</button>
+    <button class="chip" data-cmd="games">games</button>
+    <button class="chip" data-cmd="music">music</button>
     <button class="chip" data-cmd="clear">clear</button>
   </div>
   <div id="screen">
@@ -563,6 +563,7 @@ function createTTT(){
       else if (w === 'O') { beep(200, 0.2); hud.innerHTML = '<span class="red bold">AI wins.</span> · q or esc'; }
       else { hud.innerHTML = '<span class="amber">draw.</span> · q or esc'; }
     }
+    return w;
   }
   render();
   return {
@@ -1170,6 +1171,7 @@ function skipBoot(){
   booting = false; finishBoot();
 }
 function finishBoot(){
+  out.innerHTML = ''; // Clears the boot text so the screen starts clean
   banner();
   $('inline').hidden = false;
   if (matchMedia('(pointer:fine)').matches) inp.focus({ preventScroll: true });
