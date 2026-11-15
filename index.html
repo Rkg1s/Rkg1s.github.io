@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cyan">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rkg1s.github.io · terminal portfolio</title>
+<meta name="description" content="A terminal-style personal portfolio — type 'help' to look around.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0f'/%3E%3Ctext x='8' y='44' font-family='monospace' font-size='30' fill='%2341e4ff'%3E%3E_%3C/text%3E%3C/svg%3E">
+<style>
+*{box-sizing:border-box;margin:0}
+html{height:100%}
+body{min-height:100dvh;background:#050509;display:grid;place-items:center;font-family:"Cascadia Code","JetBrains Mono","Fira Code",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;-webkit-text-size-adjust:100%}
+:root{--bg:#0a0a10;--fg:#d7dcf0;--dim:#8b93b8;--faint:#565e85;--cyan:#41e4ff;--violet:#a78bfa;--green:#63f2a4;--amber:#ffcb5c;--red:#ff6b8a;--link:#8fd8ff;--glow:0 0 12px rgba(120,160,255,.10);--scan:.26;--vig:.52;--beam:.05;--flickbg:rgba(150,180,255,.03)}
+[data-theme=amber]{--bg:#0d0b06;--fg:#f2e3bb;--dim:#a89264;--faint:#6e5c3c;--cyan:#ffb000;--violet:#ff9d5c;--green:#ffd27a;--link:#ffc046;--glow:0 0 12px rgba(255,176,0,.10);--scan:.22;--vig:.45;--beam:.04;--flickbg:rgba(255,200,110,.02)}
+[data-theme=green]{--bg:#050805;--fg:#cdf3d3;--dim:#74a87d;--faint:#3f6046;--cyan:#3bff7d;--violet:#8ce9ad;--green:#3bff7d;--link:#83ffab;--glow:0 0 12px rgba(59,255,125,.10);--scan:.28;--vig:.5;--beam:.05;--flickbg:rgba(120,255,150,.02)}
+[data-theme=paper]{--bg:#f3efe7;--fg:#191b22;--dim:#5c6070;--faint:#9ba0b0;--cyan:#0057d8;--violet:#6d28d9;--green:#0a7a3d;--link:#0057d8;--glow:none;--scan:.06;--vig:.10;--beam:0;--flickbg:transparent}
+#crt{position:relative;width:min(1040px,calc(100vw - 16px));height:min(780px,calc(100dvh - 16px));background:var(--bg);border-radius:22px;overflow:hidden;box-shadow:inset 0 0 120px rgba(0,0,0,.55),0 0 0 1px rgba(130,140,190,.16),0 30px 90px rgba(0,0,0,.75);animation:power .6s ease-out}
+@keyframes power{0%{transform:scaleY(.004);filter:brightness(3)}55%{transform:scaleY(1.01)}75%{transform:scaleY(1)}100%{filter:brightness(1)}}
+#bar{position:absolute;top:0;left:0;right:0;height:34px;z-index:9;display:flex;align-items:center;gap:8px;padding:0 12px;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.06);font-size:12px;color:var(--dim);user-select:none}
+#bar .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 9px var(--green);flex:none}
+#bar .barlabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#bar .spacer{flex:1}
+#bar .chip{cursor:pointer;font:inherit;color:var(--dim);background:none;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:2px 9px;flex:none}
+#bar .chip:hover{color:var(--cyan);border-color:var(--cyan);box-shadow:0 0 8px rgba(63,228,255,.25)}
+[data-theme=paper] #bar{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.08)}
+[data-theme=paper] #bar .chip{border-color:rgba(0,0,0,.2)}
+#screen{position:absolute;top:34px;bottom:0;left:0;right:0;overflow-y:auto;overflow-x:hidden;padding:20px 24px 90px;cursor:text;scrollbar-width:thin;scrollbar-color:var(--faint) transparent}
+#screen::-webkit-scrollbar{width:8px}
+#screen::-webkit-scrollbar-thumb{background:var(--faint);border-radius:4px}
+.t{white-space:pre-wrap;overflow-wrap:break-word;font-size:14px;line-height:1.6;color:var(--fg);text-shadow:var(--glow)}
+.cyan{color:var(--cyan)}.violet{color:var(--violet)}.green{color:var(--green)}.amber{color:var(--amber)}.red{color:var(--red)}.dim{color:var(--dim)}.faint{color:var(--faint)}.bold{font-weight:700}
+.banner{font-size:13px;line-height:1.4;text-shadow:0 0 10px rgba(63,228,255,.45)}
+[data-theme=amber] .banner{text-shadow:0 0 10px rgba(255,176,0,.45)}
+[data-theme=green] .banner{text-shadow:0 0 10px rgba(59,255,125,.45)}
+[data-theme=paper] .banner{text-shadow:none}
+a{color:var(--link);text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(140,215,255,.4)}
+a:hover{color:var(--cyan)}
+[data-theme=paper] a{text-decoration-color:rgba(0,87,216,.4)}
+.chiprun{cursor:pointer;color:var(--link);text-decoration:underline;text-underline-offset:3px;text-decoration-style:dotted}
+.chiprun:hover{color:var(--cyan)}
+#inline{display:flex;align-items:baseline;margin-top:2px}
+#inline[hidden]{display:none}
+.p{white-space:pre;font-size:14px;color:var(--fg)}
+#inp{flex:1;min-width:60px;background:none;border:0;outline:0;font:inherit;color:var(--fg);caret-color:var(--cyan);padding:0}
+.layer{position:absolute;inset:0;pointer-events:none}
+#beam{position:absolute;left:0;right:0;top:-140px;height:140px;pointer-events:none;z-index:4;background:linear-gradient(to bottom,transparent,rgba(150,190,255,var(--beam)),transparent);animation:sweep 7s linear infinite}
+@keyframes sweep{from{top:-140px}to{top:100%}}
+#scan{z-index:6;background:repeating-linear-gradient(to bottom,rgba(0,0,0,var(--scan)) 0 1px,transparent 1px 3px)}
+#vig{z-index:7;background:radial-gradient(115% 115% at 50% 42%,transparent 55%,rgba(0,0,0,var(--vig)) 100%)}
+#flick{z-index:8;background:var(--flickbg);animation:flick 3.4s steps(1) infinite}
+@keyframes flick{0%,100%{opacity:.4}12%{opacity:.9}25%{opacity:.5}37%{opacity:.85}50%{opacity:.4}62%{opacity:.75}75%{opacity:.35}87%{opacity:.8}}
+@media (prefers-reduced-motion:reduce){#beam,#flick,#crt{animation:none}}
+::selection{background:var(--cyan);color:#04101a}
+@media (max-width:640px){#crt{border-radius:10px;width:100vw;height:100dvh}#screen{padding:14px 12px 70px}#bar .barlabel{display:none}#bar{height:30px;font-size:11px}.t,.p{font-size:13px}#inp{font-size:16px}}
+</style>
+</head>
+<body>
+<div id="crt">
+  <div id="bar">
+    <span class="dot"></span>
+    <span class="barlabel" id="barlabel">guest@rkg1s.github.io — vsh</span>
+    <span class="spacer"></span>
+    <button class="chip" data-cmd="help">help</button>
+    <button class="chip" data-cmd="projects">projects</button>
+    <button class="chip" data-cmd="socials">socials</button>
+    <button class="chip" data-cmd="clear">clear</button>
+  </div>
+  <div id="screen">
+    <div id="output"></div>
+    <div id="inline" hidden>
+      <span class="p" id="prompt"></span><input id="inp" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="terminal input">
+    </div>
+  </div>
+  <div id="beam"></div>
+  <div class="layer" id="scan"></div>
+  <div class="layer" id="vig"></div>
+  <div class="layer" id="flick"></div>
+</div>
+<noscript><div style="max-width:600px;margin:40px auto;color:#d7dcf0;font-family:monospace">This portfolio is an interactive terminal and needs JavaScript enabled.</div></noscript>
+<script>
+'use strict';
+const DATA = {
+  name: 'Rkg1s',
+  handle: 'rkg1s.github.io',
+  site: 'rkg1s.github.io',
+  role: 'developer · maker of random things',
+  tagline: 'bots · tools · small systems with big opinions',
+  discordProfile: 'https://discord.com/users/1010224761936281680',
+  socials: [
+    ['github', 'https://github.com/Rkg1s'],
+    ['website', 'https://rkg1s.github.io'],
+  ],
+  about: [
+    'Hi — I go by Rkg1s.',
+    'I make things for the internet: bots, tools and small',
+    'systems that do one job and then refuse to stop working.',
+    '',
+    '  • discord native — dms are the fastest way to reach me',
+    '  • likes: terminals, automation, fixing what should not be broken',
+    '  • currently: whatever project looked fun this week',
+    '  • got a weird idea? good. send it.',
+  ],
+  projects: [
+    { slug: 'ghost-patrol', name: 'Ghost Patrol', blurb: 'Discord bot that catches ghost pings red-handed',
+      stack: 'Node.js · Discord.js · SQLite',
+      details: [
+        'what    : logs deleted mentions and calls out the ghost-pinger in #court',
+        'role    : solo dev',
+        'how     : gateway message events, audit log cross-check, sqlite evidence',
+        '          vault, one very smug callout embed',
+        'stats   : 47 ghost pings caught this month · 3 friendships ended',
+        'learned : people will deny it. the logs do not lie.'] },
+    { slug: 'void-sync', name: 'Void Sync', blurb: 'end-to-end encrypted clipboard sync between your devices',
+      stack: 'Rust · WebRTC · NaCl',
+      details: [
+        'what    : copy on the laptop, paste on the phone, nobody sees it in between',
+        'role    : solo dev',
+        'how     : webrtc data channels, nacl box encryption, turn fallback for',
+        '          hostile networks, zero servers holding plaintext',
+        'stats   : ~40ms median sync · no accounts · no cloud',
+        'learned : nat traversal is 80% of the work, encryption is 2%'] },
+    { slug: 'loot-goblin', name: 'Loot Goblin', blurb: 'RNG loot-drop engine for tabletop night',
+      stack: 'TypeScript · Canvas · Web Audio',
+      details: [
+        'what    : animated loot drops with weighted tables and dramatic rarity reveals',
+        'role    : solo dev',
+        'how     : weighted rng, canvas particle bursts, a sound that plays on',
+        '          legendary drops and wakes the whole table',
+        'stats   : 1 party wiped by greed · ∞ rerolls demanded',
+        'learned : rarity feels fake without sound design'] },
+    { slug: 'termfolio', name: 'TermFolio', blurb: 'this site — a fake shell pretending to be a resume',
+      stack: 'Vanilla JS · CSS CRT fx · zero dependencies',
+      details: [
+        'what    : the page you are reading right now',
+        'role    : solo dev, obviously',
+        'how     : one html file, no build step, a tiny command parser,',
+        '          and enough css to fake a crt',
+        'stats   : 0 dependencies · ~30kb · runs anywhere forever',
+        'learned : constraint breeds style'] },
+  ],
+  skills: [['TypeScript',82],['Node.js',85],['Python',68],['Rust',41],['SQL · Postgres',72],['Docker · CI',56],['Linux',78],['Lua · Roblox',63]],
+};
+const FONT = {
+  A:['    _    ','   / \\   ','  / _ \\  ',' / ___ \\ ','/_/   \\_\\'],
+  B:[' ____  ','| __ ) ','| _ \\  ','| |_) |','|____/ '],
+  C:['  ____ ',' / ___|','| |    ','| |___ ',' \\____|'],
+  D:[' ____  ','|  _ \\ ','| | | |','| |_| |','|____/ '],
+  E:[' _____ ','| ____|','|  _|  ','| |___ ','|_____|'],
+  F:[' _____ ','|  ___|','| |_   ','|  _|  ','|_|    '],
+  G:['  ____ ',' / ___|','| |  _ ','| |_| |',' \\____|'],
+  H:[' _   _ ','| | | |','| |_| |','|  _  |','|_| |_|'],
+  I:[' ___ ','|_ _|',' | | ',' | | ','|___|'],
+  J:['     _ ','    | |',' _  | |','| |_| |',' \\___/ '],
+  K:[' _  __','| |/ /','| \' / ','| . \\ ','|_|\\_\\'],
+  L:[' _     ','| |    ','| |    ','| |    ','|_|    '],
+  M:[' __  __ ','|  \\/  |','| |\\/| |','| |  | |','|_|  |_|'],
+  N:[' _   _ ','| \\ | |','|  \\| |','| |\\  |','|_| \\_|'],
+  O:['  ___  ',' / _ \\ ','| | | |','| |_| |',' \\___/ '],
+  P:[' ____  ','|  _ \\ ','| |_) |','|  __/ ','|_|    '],
+  Q:['  ___  ',' / _ \\ ','| | | |','| |_| |',' \\__\\_\\'],
+  R:[' ____  ','|  _ \\ ','| |_) |','|  _ < ','|_| \\_\\'],
+  S:['  ____ ',' / ___|',' \\___ \\','  ___) |','|____/ '],
+  T:[' _____ ','|_   _|','  | |  ','  | |  ','  |_|  '],
+  U:[' _   _ ','| | | |','| | | |','| |_| |',' \\___/ '],
+  V:['__   __','\\ \\ / /',' \\ V / ','  \\ /  ','   \\/  '],
+  W:['__        __','\\ \\      / /',' \\ \\ /\\ / / ','  \\ V  V /  ','   \\_/\\_/   '],
+  X:['__  __','\\ \\/ /',' \\  / ',' /  \\ ','/_/\\_\\'],
+  Y:['__   __','\\ \\ / /',' \\ V / ','  | |  ','  |_|  '],
+  Z:[' _____','|__  /','  / / ',' / /_ ','/____|'],
+  0:['  ___  ',' / _ \\ ','| | | |','| |_| |',' \\___/ '],
+  1:[' _ ','/ |','| |','| |','|_|'],
+  2:[' ____  ','|___ \\ ','  __) |',' / __/ ','|_____|'],
+  3:[' _____','|___ /','  |_ \\',' ___) |','|____/ '],
+  4:[' _  _   ','| || |  ','| || |_ ','|__   _|','   |_|  '],
+  5:[' ____  ','| ___| ','|___ \\ ',' ___) |','|____/ '],
+  6:['  ___  ',' / __| ','| |    ','| |__  ',' \\___| '],
+  7:[' _____','|___  |','   / / ','  / /  ',' /_/   '],
+  8:['  ___  ',' / _ \\ ','| (_) |',' \\___/ '],
+  9:['  ___  ',' / _ \\ ','| (_) |',' \\__, |','   /_/ '],
+  ' ':[' ',' ',' ',' ',' '],
+  '-':['    ','    ',' ___ ','|___|','    '],
+  '.':['  ','  ','  ',' _ ','(_)'],
+  '!':[' _ ','(_)','| |','| |','|_|'],
+  '_':[' ',' ',' ',' ',' ______ '],
+  "'":[' _ ','( )','  ','  ','  '],
+};
+function figlet(word){
+  const glyphs = String(word).split('').map(ch => FONT[ch.toUpperCase()] || FONT[ch] || FONT[' ']);
+  const rows = [];
+  for (let i = 0; i < 5; i++) rows.push(glyphs.map(g => g[i]).join(' '));
+  return rows;
+}
+
+const $ = id => document.getElementById(id);
+const out = $('output'), scr = $('screen'), inp = $('inp');
+const T0 = Date.now();
+const hist = []; let hi = 0;
+
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function line(html, cls){
+  const d = document.createElement('div');
+  d.className = 't' + (cls ? ' ' + cls : '');
+  d.innerHTML = html || '&nbsp;';
+  out.appendChild(d);
+  scr.scrollTop = scr.scrollHeight;
+}
+function blank(){ line(''); }
+function link(url, label){ return '<a href="' + url + '" target="_blank" rel="noopener">' + (label || url) + '</a>'; }
+function runChip(cmd, label){ return '<span class="chiprun" data-cmd="' + cmd + '">' + esc(label || cmd) + '</span>'; }
+function promptHTML(){
+  return '<span class="cyan">guest</span><span class="dim">@</span><span class="violet">' + esc(DATA.handle) +
+    '</span><span class="dim">:</span><span class="green">~</span><span class="dim">$&nbsp;</span>';
+}
+function echoInput(raw){ line(promptHTML() + esc(raw)); }
+function pad(s, n){ s = String(s); return s.length >= n ? s : s + ' '.repeat(n - s.length); }
+function bar(pct, width){
+  width = width || 16;
+  const f = Math.round(pct / 100 * width);
+  return '█'.repeat(f) + '░'.repeat(width - f);
+}
+function uptime(){
+  const s = Math.floor((Date.now() - T0) / 1000);
+  return Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+}
+function copyText(t){
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove(); return ok;
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(t).then(() => true).catch(() => fallback());
+  }
+  return Promise.resolve(fallback());
+}
+
+function banner(){
+  figlet(DATA.name).forEach(l => line(esc(l), 'cyan banner'));
+  line('<span class="bold">' + esc(DATA.name) + '</span> <span class="dim">—</span> <span class="violet">' + esc(DATA.role) + '</span>');
+  line('<span class="dim">' + esc(DATA.tagline) + '</span>');
+  line('<span class="dim">site:</span> ' + link('https://' + DATA.site));
+  blank();
+  line('type ' + runChip('help', 'help') + ' to look around · ' + runChip('projects', 'projects') + ' for my work · ' + runChip('socials', 'socials') + ' to find me');
+  blank();
+}
+function skillLines(){
+  const rows = DATA.skills.map(s => '  ' + pad(s[0], 15) + bar(s[1]) + '  ' + s[1] + '%');
+  rows.push('');
+  rows.push('  (self-rated · inflated by 10% to be safe)');
+  return rows;
+}
+function socialLines(){
+  const rows = ['  ' + pad('discord', 10) + link(DATA.discordProfile) + '  <span class="dim">' + copyChip() + '</span>'];
+  DATA.socials.forEach(s => rows.push('  ' + pad(s[0], 10) + link(s[1])));
+  return rows;
+}
+function copyChip(){
+  return '<span class="chiprun" data-copy="' + esc(DATA.discordProfile) + '">[copy link]</span>';
+}
+function contactLines(){
+  return [
+    '  fastest  : ' + link(DATA.discordProfile, 'discord dm') + '  ' + copyChip(),
+    '  website  : ' + link('https://' + DATA.site),
+    '  email    : none — dms only',
+    '',
+    '  i answer within ~24h. no small talk needed — just say what you need.',
+  ];
+}
+function projLines(p){
+  const rows = [];
+  rows.push('<span class="cyan bold">' + esc(p.name) + '</span> <span class="dim">(' + esc(p.slug) + ')</span>');
+  rows.push('<span class="amber">' + esc(p.stack) + '</span>');
+  rows.push('');
+  p.details.forEach(d => rows.push('  ' + esc(d)));
+  rows.push('');
+  return rows;
+}
+const FILES = {};
+FILES['about.txt']    = () => DATA.about.map(esc);
+FILES['skills.txt']   = () => skillLines().map(esc);
+FILES['contact.txt']  = () => contactLines();
+FILES['socials.txt']  = () => socialLines();
+FILES['readme.md']    = () => ['this is a fake filesystem.', 'try: ls · cat about.txt · cat projects/' + DATA.projects[0].slug];
+DATA.projects.forEach(p => { FILES['projects/' + p.slug + '.md'] = () => projLines(p).map(esc); });
+function resolveFile(name){
+  const tries = [name, name + '.md', 'projects/' + name + '.md', 'projects/' + name];
+  for (const t of tries) if (FILES[t]) return t;
+  return null;
+}
+
+const CMDS = {};
+function def(names, fn){ names.forEach(n => CMDS[n] = fn); }
+def(['help'], () => {
+  line('<span class="cyan bold">CORE</span>');
+  [['help','this menu'],['about','who i am'],['projects','list of things i built'],['skills','stack, honestly rated'],
+     ['socials','everywhere i exist'],['discord','copy my discord profile link'],['contact','reach me'],
+   ['open <site>','open a link in a new tab']]
+    .forEach(c => line('  ' + pad(c[0], 17) + '<span class="dim">' + c[1] + '</span>'));
+  line('<span class="cyan bold">SYSTEM</span>');
+  [['ls / cat <file>','fake filesystem — try: cat about.txt'],['neofetch','system info, flex edition'],
+   ['theme <name>','cyan · amber · green · paper'],['whoami','existential inquiry'],['banner','title screen'],
+   ['date · echo · history','the classics'],['clear','wipe the screen (ctrl+L)']]
+    .forEach(c => line('  ' + pad(c[0], 17) + '<span class="dim">' + c[1] + '</span>'));
+  line('<span class="cyan bold">SECRETS</span>');
+  line('  ' + pad('sudo · exit · rm', 17) + '<span class="dim">…try them and see</span>');
+  blank();
+  line('<span class="dim">tip: tab completes · ↑/↓ walks history · ctrl+L clears</span>');
+});
+def(['clear'], () => { out.innerHTML = ''; });
+def(['banner'], banner);
+def(['about'], () => { FILES['about.txt']().forEach(l => line(l)); blank(); line('<span class="dim">see also: ' + runChip('skills', 'skills') + ' · ' + runChip('projects', 'projects') + '</span>'); });
+def(['projects', 'work'], () => {
+  blank();
+  DATA.projects.forEach((p, i) => {
+    line('  <span class="faint">[' + pad(String(i + 1), 2) + ']</span> <span class="cyan">' + pad(p.slug, 14) + '</span><span class="dim">' + esc(p.blurb) + '</span>');
+  });
+  blank();
+  line('<span class="dim">details: ' + runChip('cat projects/' + DATA.projects[0].slug, 'cat projects/<slug>') + '</span>');
+});
+def(['skills'], () => { blank(); FILES['skills.txt']().forEach(l => line(l)); blank(); });
+def(['socials', 'social', 'links'], () => { blank(); FILES['socials.txt']().forEach(l => line(l)); blank(); });
+def(['contact'], () => { blank(); FILES['contact.txt']().forEach(l => line(l)); blank(); });
+def(['discord'], () => {
+  copyText(DATA.discordProfile).then(ok => {
+    line(ok ? '<span class="green">[ok]</span> discord profile link copied:'
+            : '<span class="amber">[!!]</span> could not auto-copy — open it here:');
+    line('  ' + link(DATA.discordProfile));
+    line('<span class="dim">dm me. i probably live there.</span>');
+  });
+});
+def(['open'], args => {
+  const q = (args[0] || '').toLowerCase();
+  if (!q) { line('open what? try: ' + DATA.socials.map(s => '<span class="dim">' + s[0] + '</span>').join(' · ') + ' · <span class="dim">discord</span>'); return; }
+  if (q === 'discord' || q === 'dc') {
+    window.open(DATA.discordProfile, '_blank', 'noopener');
+    line('opening discord profile … ' + link(DATA.discordProfile));
+    return;
+  }
+  if (q === 'site' || q === 'website') {
+    window.open('https://' + DATA.site, '_blank', 'noopener');
+    line('opening ' + link('https://' + DATA.site) + ' …');
+    return;
+  }
+  const hit = DATA.socials.find(s => s[0].indexOf(q) === 0);
+  if (!hit) { line('<span class="red">no link called "' + esc(q) + '"</span> — run ' + runChip('socials', 'socials')); return; }
+  window.open(hit[1], '_blank', 'noopener');
+  line('opening ' + link(hit[1]) + ' …');
+});
+def(['cat'], args => {
+  const name = args.join(' ');
+  if (!name) { line('usage: cat &lt;file&gt; — try ' + runChip('cat about.txt', 'cat about.txt')); return; }
+  if (name === 'projects' || name === 'projects/') { CMDS['projects'](); return; }
+  const key = resolveFile(name);
+  if (!key) { line('<span class="red">cat: ' + esc(name) + ': no such file</span> — run ' + runChip('ls', 'ls')); return; }
+  blank(); FILES[key]().forEach(l => line(l)); blank();
+});
+def(['ls'], args => {
+  const path = args[0] || '';
+  if (!path) {
+    line('  <span class="cyan">about.txt</span>   <span class="cyan">contact.txt</span>   <span class="cyan">readme.md</span>');
+    line('  <span class="cyan">skills.txt</span>  <span class="cyan">socials.txt</span>    <span class="violet">projects/</span>');
+    line('<span class="dim">hint: cat &lt;file&gt; · ls projects</span>');
+    return;
+  }
+  if (path.indexOf('project') === 0) {
+    DATA.projects.forEach(p => line('  <span class="cyan">' + pad(p.slug, 14) + '</span><span class="dim">' + esc(p.blurb) + '</span>'));
+    return;
+  }
+  line('<span class="red">ls: ' + esc(path) + ': no such directory</span>');
+});
+def(['neofetch'], () => {
+  const art = [' ._____.', ' | ___ |', ' ||_>_||', ' |[___]|', " '-----'", '', '', ''];
+  const info = [
+    '<span class="cyan">guest@' + esc(DATA.handle) + '</span>',
+    '<span class="dim">---------------</span>',
+    'site    : <span class="dim">' + esc(DATA.site) + '</span>',
+    'role    : <span class="dim">' + esc(DATA.role) + '</span>',
+    'shell   : <span class="dim">vsh 1.0 (web)</span>',
+    'uptime  : <span class="dim">' + uptime() + '</span>',
+    'theme   : <span class="dim">' + (document.documentElement.dataset.theme || 'cyan') + '</span>',
+    'projects: <span class="dim">' + DATA.projects.length + ' · skills: ' + DATA.skills.length + '</span>',
+    'coffee  : <span class="amber">∞ (brewing)</span>',
+  ];
+  for (let i = 0; i < info.length; i++) line('<span class="cyan">' + esc(pad(art[i], 12)) + '</span>' + info[i]);
+});
+def(['whoami'], () => { line('guest <span class="dim">— but the interesting one is</span> <span class="bold">' + esc(DATA.name) + '</span>. run ' + runChip('about', 'about') + '.'); });
+def(['date'], () => line(new Date().toString()));
+def(['echo'], args => line(esc(args.join(' ')) || '&nbsp;'));
+def(['history'], () => { hist.forEach((h, i) => line('  <span class="faint">' + pad(String(i + 1), 4) + '</span>' + esc(h))); });
+def(['theme'], args => {
+  const t = (args[0] || '').toLowerCase();
+  const valid = ['cyan', 'amber', 'green', 'paper'];
+  if (!t) { line('themes: ' + valid.join(' · ') + ' <span class="dim">(current: ' + (document.documentElement.dataset.theme || 'cyan') + ')</span>'); return; }
+  if (valid.indexOf(t) === -1) { line('<span class="red">unknown theme "' + esc(t) + '"</span> — pick: ' + valid.join(' · ')); return; }
+  setTheme(t);
+  line('theme set to <span class="cyan">' + t + '</span> <span class="dim">(saved for next visit)</span>');
+});
+def(['sudo'], args => {
+  if (args.join(' ').indexOf('hire') !== -1) {
+    line('<span class="amber">[sudo] hiring protocol engaged.</span>');
+    line('<span class="dim">escalating privileges… just kidding, dm me instead:</span> ' + link(DATA.discordProfile));
+    return;
+  }
+  line('guest is not in the sudoers file. <span class="dim">this incident will be reported. (to whom?)</span>');
+});
+def(['rm'], args => {
+  if (args.join(' ').indexOf('-rf') !== -1) {
+    line('<span class="red">wiping filesystem</span> <span class="dim">██████████ 100%</span>');
+    line('just kidding. nothing was harmed <span class="dim">— my job is safe.</span>');
+    return;
+  }
+  line('rm: missing operand <span class="dim">(bold of you to try without it)</span>');
+});
+def(['exit', 'logout'], () => {
+  line('<span class="dim">logout attempted… session refused to end.</span>');
+  line('<span class="dim">(it is a web page — close the tab, or stay. we have coffee.)</span>');
+});
+def(['coffee'], () => {
+  ['      ( (', '       ) )', '    ┌─────────┐', '    │         │─┐', '    │         │ │', '    │         │─┘', '    └─────────┘'].forEach(l => line(l, 'amber'));
+  line('<span class="dim">fresh pot. rendering at 98°C.</span>');
+});
+def(['hire-me', 'hireme'], () => {
+  line('<span class="cyan bold">why me?</span>');
+  line('  <span class="dim">• ships fast, documents everything, allergic to scope creep</span>');
+  line('  <span class="dim">• specializes in: bots, tools, weird ideas that should not work</span>');
+  line('<span class="dim">pitch →</span> ' + link(DATA.discordProfile, 'discord dm') + ' ' + copyChip());
+});
+CMDS._discord = CMDS.discord;
+
+function nope(orig){
+  const keys = Object.keys(CMDS).filter(k => !k.startsWith('_'));
+  let best = null, bd = 3;
+  keys.forEach(k => {
+    const d = editDist(orig.toLowerCase(), k);
+    if (d < bd) { bd = d; best = k; }
+  });
+  line('vsh: ' + esc(orig) + ': command not found' + (best ? ' <span class="dim">— did you mean</span> ' + runChip(best, best) + '<span class="dim">?</span>' : ''));
+  line('<span class="dim">run</span> ' + runChip('help', 'help') + '<span class="dim"> for the menu</span>');
+}
+function editDist(a, b){
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m + 1}, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
+    dp[i][j] = Math.min(dp[i-1][j] + 1, dp[i][j-1] + 1, dp[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return dp[m][n];
+}
+
+function run(raw){
+  echoInput(raw);
+  const s = raw.trim();
+  if (!s) return;
+  hist.push(s); hi = hist.length;
+  const parts = s.split(/\s+/);
+  const c = CMDS[parts[0].toLowerCase()];
+  if (!c || String(parts[0])[0] === '_') { nope(parts[0]); return; }
+  try { c(parts.slice(1)); }
+  catch (err) { line('<span class="red">vsh: internal error — ' + esc(err.message) + '</span>'); }
+}
+
+inp.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { const v = inp.value; inp.value = ''; run(v); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); if (hi > 0) { hi--; inp.value = hist[hi] || ''; } }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); if (hi < hist.length) { hi++; inp.value = hist[hi] || ''; } }
+  else if (e.key === 'Tab') {
+    e.preventDefault();
+    complete();
+  }
+  else if (e.ctrlKey && (e.key === 'l' || e.key === 'L')) { e.preventDefault(); out.innerHTML = ''; }
+  else if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) { echoInput(inp.value + '^C'); inp.value = ''; }
+});
+function complete(){
+  const v = inp.value, parts = v.split(/\s+/), last = parts[parts.length - 1] || '';
+  let pool;
+  if (parts.length <= 1) pool = Object.keys(CMDS).filter(k => !k.startsWith('_'));
+  else {
+    pool = Object.keys(FILES).map(k => k.replace(/\.md$/, ''))
+      .concat(['projects'], DATA.socials.map(s => s[0]), ['discord', 'site'], ['cyan', 'amber', 'green', 'paper']);
+    if (parts[0].toLowerCase() === 'theme') pool = ['cyan', 'amber', 'green', 'paper'];
+    if (parts[0].toLowerCase() === 'open') pool = DATA.socials.map(s => s[0]).concat(['discord', 'site']);
+  }
+  const hits = pool.filter(p => p.indexOf(last) === 0 && p !== last);
+  if (!hits.length) return;
+  if (hits.length === 1) { parts[parts.length - 1] = hits[0]; inp.value = parts.join(' ') + ' '; return; }
+  echoInput(v);
+  line(hits.map(h => '<span class="cyan">' + esc(h) + '</span>').join('   '), 'dim');
+}
+scr.addEventListener('pointerup', () => {
+  if (window.getSelection().toString()) return;
+  if (!document.querySelector('#inline[hidden]')) inp.focus({ preventScroll: true });
+});
+out.addEventListener('click', e => {
+  const cp = e.target.closest('[data-copy]');
+  if (cp) {
+    copyText(cp.dataset.copy).then(ok => line(ok ? '<span class="green">[ok]</span> copied <span class="bold">' + esc(cp.dataset.copy) + '</span> to clipboard'
+      : '<span class="amber">[!!]</span> auto-copy failed — handle: <span class="bold">' + esc(cp.dataset.copy) + '</span>', 'dim'));
+    return;
+  }
+  const cm = e.target.closest('[data-cmd]');
+  if (cm) { run(cm.dataset.cmd); inp.focus({ preventScroll: true }); }
+});
+document.querySelectorAll('#bar .chip').forEach(b => b.addEventListener('click', () => { run(b.dataset.cmd); inp.focus({ preventScroll: true }); }));
+
+function setTheme(t){
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem('vsh-theme', t); } catch (e) {}
+}
+try { setTheme(localStorage.getItem('vsh-theme') || 'cyan'); } catch (e) { setTheme('cyan'); }
+
+const BOOT = [
+  '[ 0.000001] vsh v1.0 — virtual shell',
+  '[ 0.000047] tty0: 80×25 → ∞ … ok',
+  '[ 0.000121] mounting /projects … ok',
+  '[ 0.000193] warming phosphor … ok',
+  '[ 0.000240] linking discord bridge … ok',
+  '[ 0.000311] resolving rkg1s.github.io … ok',
+  '[ 0.000389] all systems nominal',
+];
+let booting = true, bootTimer = null, bi = 0;
+$('barlabel').textContent = 'guest@' + DATA.handle + ' — vsh';
+$('prompt').innerHTML = promptHTML();
+document.title = 'Rkg1s.github.io · terminal portfolio';
+function bootStep(){
+  if (bi >= BOOT.length) { booting = false; finishBoot(); return; }
+  line(esc(BOOT[bi]), 'faint'); bi++;
+  bootTimer = setTimeout(bootStep, 90);
+}
+function skipBoot(){
+  if (!booting) return;
+  clearTimeout(bootTimer);
+  out.innerHTML = '';
+  BOOT.forEach(l => line(esc(l), 'faint'));
+  booting = false; finishBoot();
+}
+function finishBoot(){
+  banner();
+  $('inline').hidden = false;
+  if (matchMedia('(pointer:fine)').matches) inp.focus({ preventScroll: true });
+  window.removeEventListener('keydown', onSkip);
+  window.removeEventListener('pointerdown', onSkip);
+}
+function onSkip(){ if (booting) skipBoot(); }
+window.addEventListener('keydown', onSkip);
+window.addEventListener('pointerdown', onSkip);
+bootStep();
+</script>
+</body>
+</html>
