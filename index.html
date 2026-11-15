@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Rkg1s.github.io · terminal portfolio</title>
+<title>Rk · terminal portfolio</title>
 <meta name="description" content="A terminal-style personal portfolio — type 'help' to look around.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0f'/%3E%3Ctext x='8' y='44' font-family='monospace' font-size='30' fill='%2341e4ff'%3E%3E_%3C/text%3E%3C/svg%3E">
 <style>
@@ -58,7 +58,7 @@ a:hover{color:var(--cyan)}
 <div id="crt">
   <div id="bar">
     <span class="dot"></span>
-    <span class="barlabel" id="barlabel">guest@rkg1s.github.io — vsh</span>
+    <span class="barlabel" id="barlabel">guest@rk — vsh</span>
     <span class="spacer"></span>
     <button class="chip" data-cmd="help">help</button>
     <button class="chip" data-cmd="projects">projects</button>
@@ -80,8 +80,8 @@ a:hover{color:var(--cyan)}
 <script>
 'use strict';
 const DATA = {
-  name: 'Rkg1s',
-  handle: 'rkg1s.github.io',
+  name: 'Rk',
+  handle: 'rk',
   site: 'rkg1s.github.io',
   role: 'developer · maker of random things',
   tagline: 'bots · tools · small systems with big opinions',
@@ -91,7 +91,7 @@ const DATA = {
     ['website', 'https://rkg1s.github.io'],
   ],
   about: [
-    'Hi — I go by Rkg1s.',
+    'Hi — I go by Rk.',
     'I make things for the internet: bots, tools and small',
     'systems that do one job and then refuse to stop working.',
     '',
@@ -521,7 +521,7 @@ const BOOT = [
 let booting = true, bootTimer = null, bi = 0;
 $('barlabel').textContent = 'guest@' + DATA.handle + ' — vsh';
 $('prompt').innerHTML = promptHTML();
-document.title = 'Rkg1s.github.io · terminal portfolio';
+document.title = DATA.name + ' · terminal portfolio';
 function bootStep(){
   if (bi >= BOOT.length) { booting = false; finishBoot(); return; }
   line(esc(BOOT[bi]), 'faint'); bi++;
