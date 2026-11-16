@@ -291,13 +291,18 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 
 // ─── EDIT TRACKS HERE ───
 // Ensure the title and artist exactly match a song in the LRCLIB database for auto-lyrics
+// If the auto-fetch fails, you can still add a manual fallback here:
+// lyrics: [ { time: 0, text: "Line 1" } ]
 const TRACKS = [
   { 
     title: 'Meet you again', 
     artist: 'Breeze', 
     url: 'music/meet-you-again.mp3'
-    // If the auto-fetch fails, you can still add a manual fallback here:
-    // lyrics: [ { time: 0, text: "Line 1" } ]
+  },
+  { 
+    title: 'Misery', 
+    artist: 'pupsies', 
+    url: 'music/misery.mp3' 
   }
 ];
 
