@@ -34,7 +34,7 @@ body{
 
 /* ── Main Container ── */
 .app-container {
-  width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 20px; z-index: 1;
+  width: 100%; max-width: 880px; display: flex; flex-direction: column; gap: 20px; z-index: 1;
 }
 
 /* ── Header ── */
@@ -47,7 +47,7 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 /* ── The Deck (Player Panel) ── */
 .deck {
   background: var(--panel); border: 1px solid rgba(255,255,255,.08); border-radius: 16px;
-  padding: 24px; display: flex; gap: 28px; align-items: center; position: relative;
+  padding: 24px; display: flex; gap: 24px; align-items: stretch; position: relative;
   box-shadow: inset 0 0 40px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.4);
 }
 [data-theme=paper] .deck { border-color: rgba(0,0,0,.1); box-shadow: none; }
@@ -56,7 +56,7 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 #viz { position: absolute; bottom: 0; left: 0; width: 100%; height: 80px; z-index: 0; pointer-events: none; opacity: .4; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; }
 
 /* ── Turntable Area ── */
-.turntable { position: relative; width: 160px; height: 160px; flex: none; z-index: 1; display: flex; align-items: center; justify-content: center; }
+.turntable { position: relative; width: 160px; height: 160px; flex: none; z-index: 1; display: flex; align-items: center; justify-content: center; margin-top: 20px; }
 
 /* Platter */
 .platter {
@@ -113,6 +113,27 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 [data-theme=paper] .progress-bg { background: rgba(0,0,0,.1); }
 .progress-fill { height: 100%; background: var(--cyan); width: 0; transition: width .1s linear; box-shadow: 0 0 10px var(--cyan); }
 .times { display: flex; justify-content: space-between; font-size: 10px; color: var(--faint); margin-top: 6px; font-variant-numeric: tabular-nums; }
+
+/* ── Lyrics Box ── */
+.lyrics-container {
+  flex: 1.2; min-width: 200px; height: 180px; position: relative;
+  overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+  padding: 70px 10px;
+  scroll-behavior: smooth;
+  mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+  z-index: 1;
+}
+.lyrics-container::-webkit-scrollbar { display: none; }
+.lyric-line {
+  font-size: 13px; color: var(--faint); opacity: .4; transition: all .3s ease;
+  transform-origin: left center; text-align: left;
+}
+.lyric-line.active {
+  color: var(--cyan); font-weight: bold; opacity: 1; transform: scale(1.05);
+  text-shadow: 0 0 8px rgba(63,228,255,.4);
+}
+.lyric-line.loading { color: var(--amber); opacity: 1; font-style: italic; }
 
 /* ── Controls ── */
 .controls {
@@ -173,13 +194,14 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 @keyframes eq { 0%,100%{height:20%} 50%{height:100%} }
 
 /* ── Responsive ── */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .app-container { gap: 16px; }
-  .deck { flex-direction: column; padding: 20px; gap: 20px; text-align: center; }
-  .turntable { width: 140px; height: 140px; margin: 0 auto; }
-  .tonearm { top: 5px; right: 10px; }
+  .deck { flex-direction: column; padding: 20px; gap: 16px; text-align: center; align-items: center; }
+  .turntable { width: 140px; height: 140px; margin-top: 0; }
   .info { width: 100%; }
   .np-title { font-size: 18px; }
+  .lyrics-container { width: 100%; height: 120px; padding: 40px 10px; text-align: center; }
+  .lyric-line { text-align: center; transform-origin: center center; }
   .controls { flex-direction: column; gap: 16px; padding: 16px; }
   .vol-wrap { width: 100%; justify-content: center; }
   .vol-wrap input { width: 120px; }
@@ -234,6 +256,11 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
         </div>
       </div>
     </div>
+
+    <!-- Real-time Lyrics -->
+    <div class="lyrics-container" id="lyrics-container">
+      <div class="lyric-line" style="color:var(--faint)">no lyrics available</div>
+    </div>
   </div>
 
   <!-- Controls -->
@@ -263,8 +290,15 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 'use strict';
 
 // ─── EDIT TRACKS HERE ───
+// Ensure the title and artist exactly match a song in the LRCLIB database for auto-lyrics
 const TRACKS = [
-  { title: 'Meet you again', artist: 'Breezee', url: 'music/meet-you-again.mp3' }
+  { 
+    title: 'Meet you again', 
+    artist: 'Breeze', 
+    url: 'music/meet-you-again.mp3'
+    // If the auto-fetch fails, you can still add a manual fallback here:
+    // lyrics: [ { time: 0, text: "Line 1" } ]
+  }
 ];
 
 // Sync theme from parent terminal
@@ -281,10 +315,13 @@ const curEl = $('cur'), durEl = $('dur');
 const fillEl = $('progress-fill');
 const playBtn = $('play'), disc = $('disc'), tonearm = $('tonearm');
 const shuffleBtn = $('shuffle'), repeatBtn = $('repeat');
+const lyricsContainer = $('lyrics-container');
 
 let idx = -1;
 let isShuffle = false;
 let isRepeat = false;
+let currentLyricIdx = -1;
+let activeLyrics = []; // Stores the lyrics for the current track
 
 /* ─── Audio Visualizer ─── */
 const canvas = $('viz');
@@ -347,6 +384,19 @@ function renderList(){
   ).join('');
 }
 
+function renderLyrics(lyricsArray) {
+  activeLyrics = lyricsArray || [];
+  if (activeLyrics.length === 0) {
+    lyricsContainer.innerHTML = '<div class="lyric-line" style="color:var(--faint)">no lyrics available</div>';
+    currentLyricIdx = -1;
+    return;
+  }
+  lyricsContainer.innerHTML = activeLyrics.map((l, i) => 
+    `<div class="lyric-line" data-time="${l.time}" id="lyric-${i}">${esc(l.text)}</div>`
+  ).join('');
+  currentLyricIdx = -1;
+}
+
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function updateUI(){
@@ -386,12 +436,70 @@ function updateUI(){
   repeatBtn.classList.toggle('active', isRepeat);
 }
 
+/* ─── Auto Lyrics Fetcher (LRCLIB) ─── */
+async function fetchLyrics(track) {
+  // If the track has manual lyrics in the TRACKS array, use those.
+  if (track.lyrics && track.lyrics.length > 0) {
+    renderLyrics(track.lyrics);
+    return;
+  }
+
+  // Otherwise, fetch from LRCLIB API
+  lyricsContainer.innerHTML = '<div class="lyric-line loading">searching database for lyrics...</div>';
+  
+  try {
+    const url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(track.title)}&artist_name=${encodeURIComponent(track.artist)}`;
+    const res = await fetch(url);
+    
+    if (!res.ok) throw new Error('Not found');
+    
+    const data = await res.json();
+    
+    if (data.syncedLyrics) {
+      // Parse LRC format: [00:12.34] Text
+      const lines = data.syncedLyrics.split('\n');
+      const parsed = [];
+      
+      lines.forEach(line => {
+        const match = line.match(/\[(\d{2}):(\d{2}\.\d{2,3})\](.*)/);
+        if (match) {
+          const min = parseInt(match[1]);
+          const sec = parseFloat(match[2]);
+          const time = (min * 60) + sec;
+          const text = match[3].trim();
+          if (text) parsed.push({ time, text });
+        }
+      });
+      
+      if (parsed.length > 0) {
+        renderLyrics(parsed);
+      } else {
+        renderLyrics(null);
+      }
+    } else if (data.plainLyrics) {
+      // If no timestamps, just show the text (won't sync)
+      const lines = data.plainLyrics.split('\n').map(t => ({ time: -1, text: t.trim() }));
+      renderLyrics(lines);
+    } else {
+      renderLyrics(null);
+    }
+  } catch (err) {
+    lyricsContainer.innerHTML = '<div class="lyric-line" style="color:var(--faint)">lyrics not found automatically</div>';
+    activeLyrics = [];
+  }
+}
+
 /* ─── Player Logic ─── */
 function play(i){
   if (i < 0 || i >= TRACKS.length) return;
   idx = i;
   audio.src = TRACKS[i].url;
   if (!audioCtx) initAudioCtx();
+  
+  // Reset lyrics view and fetch new ones
+  renderLyrics(null);
+  fetchLyrics(TRACKS[i]);
+  
   audio.play().catch(() => {});
   updateUI();
 }
@@ -417,6 +525,44 @@ function prev(){
   play((idx - 1 + TRACKS.length) % TRACKS.length);
 }
 
+/* ─── Real-Time Lyrics Sync ─── */
+function syncLyrics() {
+  if (idx < 0 || !activeLyrics || activeLyrics.length === 0) return;
+  
+  const time = audio.currentTime;
+  let activeIdx = -1;
+  
+  // Find the most recent line that has passed
+  for (let i = 0; i < activeLyrics.length; i++) {
+    if (activeLyrics[i].time >= 0 && time >= activeLyrics[i].time) {
+      activeIdx = i;
+    } else if (activeLyrics[i].time >= 0 && time < activeLyrics[i].time) {
+      break;
+    }
+  }
+  
+  if (activeIdx !== currentLyricIdx) {
+    currentLyricIdx = activeIdx;
+    
+    // Remove old active
+    const oldActive = lyricsContainer.querySelector('.lyric-line.active');
+    if (oldActive) oldActive.classList.remove('active');
+    
+    // Add new active
+    if (activeIdx >= 0) {
+      const el = document.getElementById(`lyric-${activeIdx}`);
+      if (el) {
+        el.classList.add('active');
+        // Scroll to center
+        const containerHeight = lyricsContainer.clientHeight;
+        const elTop = el.offsetTop;
+        const elHeight = el.clientHeight;
+        lyricsContainer.scrollTop = elTop - (containerHeight / 2) + (elHeight / 2);
+      }
+    }
+  }
+}
+
 /* ─── Events ─── */
 audio.addEventListener('play', updateUI);
 audio.addEventListener('pause', updateUI);
@@ -425,6 +571,7 @@ audio.addEventListener('loadedmetadata', () => { durEl.textContent = fmt(audio.d
 audio.addEventListener('timeupdate', () => {
   curEl.textContent = fmt(audio.currentTime);
   if (audio.duration) fillEl.style.width = (audio.currentTime / audio.duration * 100) + '%';
+  syncLyrics();
 });
 
 $('progress-wrap').addEventListener('click', e => {
