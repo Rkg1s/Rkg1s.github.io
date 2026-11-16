@@ -49,7 +49,7 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
   background: var(--panel); border: 1px solid rgba(255,255,255,.08); border-radius: 16px;
   padding: 24px; display: flex; gap: 24px; align-items: center; position: relative;
   box-shadow: inset 0 0 40px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.4);
-  overflow: hidden; /* FIX: Locks visualizer and vinyl inside the box */
+  overflow: hidden;
 }
 [data-theme=paper] .deck { border-color: rgba(0,0,0,.1); box-shadow: none; }
 
@@ -58,14 +58,21 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 
 /* ── Turntable Area ── */
 .turntable { 
-  position: relative; width: 160px; height: 160px; flex: none; z-index: 1; 
-  display: flex; align-items: center; justify-content: center; 
-  /* FIX: removed margin-top so it centers perfectly */
+  position: relative; 
+  width: 200px; /* Increased to fit the arm */
+  height: 160px; 
+  flex: none; 
+  z-index: 1; 
+  display: flex; 
+  align-items: center; 
+  justify-content: flex-start;
 }
 
 /* Platter */
 .platter {
-  width: 100%; height: 100%; border-radius: 50%;
+  width: 160px; 
+  height: 160px; 
+  border-radius: 50%;
   background: radial-gradient(circle at 50% 50%, var(--vinyl-edge) 0%, var(--vinyl) 80%);
   box-shadow: 0 0 0 4px rgba(255,255,255,.03), 0 8px 20px rgba(0,0,0,.8), inset 0 0 20px rgba(0,0,0,.9);
   display: flex; align-items: center; justify-content: center; position: relative;
@@ -93,16 +100,84 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 }
 .label::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--bg); box-shadow: inset 0 2px 4px rgba(0,0,0,.8); }
 
-/* Tonearm */
-.tonearm {
-  position: absolute; top: 10px; right: 15px; width: 70px; height: 120px; z-index: 3;
-  transform-origin: top right; transform: rotate(-26deg); transition: transform .6s cubic-bezier(.34,1.56,.64,1);
+/* ── New Tonearm Setup ── */
+.tonearm-wrapper {
+  position: absolute;
+  right: 0;
+  top: 10px;
+  width: 60px;
+  height: 140px;
+  z-index: 3;
   pointer-events: none;
 }
-.tonearm.playing { transform: rotate(-8deg); }
-.tonearm::before { content: ''; position: absolute; top: 0; right: 0; width: 12px; height: 12px; border-radius: 50%; background: #777; box-shadow: 0 0 10px rgba(255,255,255,.2), inset 0 1px 3px rgba(0,0,0,.8); z-index: 2; }
-.tonearm::after { content: ''; position: absolute; top: 5px; right: 4px; width: 3px; height: 85px; background: linear-gradient(to bottom, #999, #444); border-radius: 2px; transform-origin: top center; transform: rotate(12deg); box-shadow: 2px 2px 5px rgba(0,0,0,.8); }
-.tonearm .head { position: absolute; bottom: 0; right: -4px; width: 16px; height: 10px; background: linear-gradient(to right, #ccc, #555); border-radius: 2px 2px 6px 6px; transform: rotate(12deg); box-shadow: 0 3px 6px rgba(0,0,0,.6); }
+
+/* Tonearm Base (pivot point) */
+.tonearm-base {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ccc, #666);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.5);
+  border: 1px solid rgba(0,0,0,0.2);
+}
+
+/* Tonearm Arm */
+.tonearm {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 3px;
+  height: 105px;
+  background: linear-gradient(to right, #aaa, #ddd, #777);
+  border-radius: 2px;
+  transform-origin: top right;
+  transform: rotate(-35deg); /* Rest position: swung out */
+  transition: transform 0.8s cubic-bezier(0.4, 1.2, 0.6, 1);
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+}
+
+.tonearm.playing { transform: rotate(8deg); } /* Play position: on the record */
+
+/* Counterweight */
+.tonearm::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -4px;
+  width: 11px;
+  height: 16px;
+  background: linear-gradient(to right, #555, #888);
+  border-radius: 2px;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
+}
+
+/* Headshell / Cartridge */
+.tonearm .head {
+  position: absolute;
+  bottom: -12px;
+  left: -7px;
+  width: 17px;
+  height: 22px;
+  background: linear-gradient(135deg, #eee, #888);
+  border-radius: 2px 2px 4px 4px;
+  transform: rotate(10deg);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+}
+
+/* Stylus / Needle */
+.tonearm .head::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 6px;
+  width: 4px;
+  height: 6px;
+  background: #333;
+  border-radius: 0 0 2px 2px;
+}
 
 /* ── Info & Progress ── */
 .info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; z-index: 1; }
@@ -202,7 +277,10 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 @media (max-width: 768px) {
   .app-container { gap: 16px; }
   .deck { flex-direction: column; padding: 20px; gap: 16px; text-align: center; align-items: center; }
-  .turntable { width: 140px; height: 140px; }
+  .turntable { width: 180px; height: 140px; }
+  .platter { width: 140px; height: 140px; }
+  .label { width: 48px; height: 48px; }
+  .tonearm-wrapper { top: 5px; right: 5px; transform: scale(0.85); transform-origin: top right; }
   .info { width: 100%; }
   .np-title { font-size: 18px; }
   .lyrics-container { width: 100%; height: 120px; padding: 40px 10px; text-align: center; }
@@ -239,6 +317,11 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
         <div class="disc" id="disc">
           <div class="label"></div>
         </div>
+      </div>
+      
+      <!-- Realistic Tonearm Structure -->
+      <div class="tonearm-wrapper">
+        <div class="tonearm-base"></div>
         <div class="tonearm" id="tonearm">
           <div class="head"></div>
         </div>
@@ -298,7 +381,7 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 const TRACKS = [
   { 
     title: 'Meet you again', 
-    artist: 'Breezee', 
+    artist: 'Breeze', 
     url: 'music/meet-you-again.mp3'
   },
   { 
