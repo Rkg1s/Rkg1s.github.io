@@ -401,7 +401,7 @@ function createSnake(){
   return {
     onKey(e){
       e.preventDefault();
-      if (!alive) { gameManager.stop(); return; }
+      if (!alive) { gameManager.stop(); return; } // <--- Snake correctly exits on keypress after death
       const k = e.key.toLowerCase();
       if (k === 'q') { gameManager.stop(); return; }
       if ((k === 'arrowup' || k === 'w') && dir.y !== 1) nextDir = {x:0, y:-1};
@@ -717,7 +717,7 @@ function createReaction(){
   return {
     onKey(e){
       e.preventDefault();
-      if (stopped) return;
+      if (stopped) { gameManager.stop(); return; } // <--- THIS WAS THE BUG. NOW FIXED.
       if (!armed) {
         stopped = true; clearTimeout(timeout);
         body.innerHTML = '<span class="red bold">too early!</span> wait for the cue.';
