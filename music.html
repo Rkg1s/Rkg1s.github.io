@@ -34,7 +34,7 @@ body{
 
 /* ── Main Container ── */
 .app-container {
-  width: 100%; max-width: 880px; display: flex; flex-direction: column; gap: 20px; z-index: 1;
+  width: 100%; max-width: 800px; display: flex; flex-direction: column; gap: 20px; z-index: 1;
 }
 
 /* ── Header ── */
@@ -54,27 +54,25 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 [data-theme=paper] .deck { border-color: rgba(0,0,0,.1); box-shadow: none; }
 
 /* Visualizer Canvas */
-#viz { position: absolute; bottom: 0; left: 0; width: 100%; height: 80px; z-index: 0; pointer-events: none; opacity: .4; }
+#viz { position: absolute; bottom: 0; left: 0; width: 100%; height: 60px; z-index: 0; pointer-events: none; opacity: .25; }
 
 /* ── Turntable Area ── */
 .turntable { 
   position: relative; 
-  width: 170px; /* Fixed width to hold record + arm base */
+  width: 160px; 
   height: 160px; 
   flex: none; 
   z-index: 1; 
-  margin-right: 10px;
 }
 
 /* Platter */
 .platter {
-  position: absolute;
-  left: 0; top: 0;
-  width: 160px; height: 160px; 
+  width: 100%; 
+  height: 100%; 
   border-radius: 50%;
   background: radial-gradient(circle at 50% 50%, var(--vinyl-edge) 0%, var(--vinyl) 80%);
   box-shadow: 0 0 0 4px rgba(255,255,255,.03), 0 8px 20px rgba(0,0,0,.8), inset 0 0 20px rgba(0,0,0,.9);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center; position: relative;
 }
 [data-theme=paper] .platter { box-shadow: 0 0 0 4px rgba(0,0,0,.05), 0 5px 15px rgba(0,0,0,.2); }
 
@@ -99,90 +97,78 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 }
 .label::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--bg); box-shadow: inset 0 2px 4px rgba(0,0,0,.8); }
 
-/* ── Tonearm ── */
-.tonearm-wrapper {
+/* ── Tonearm Assembly ── */
+.tonearm-assembly {
   position: absolute;
-  right: -5px;
-  top: 5px;
-  width: 40px;
+  top: 10px;
+  right: -15px; /* Anchored to the top right edge of the record */
+  width: 30px;
   height: 150px;
   z-index: 3;
   pointer-events: none;
 }
 
-/* Tonearm Base (pivot point) */
+/* The pivot base */
 .tonearm-base {
   position: absolute;
   top: 0;
   right: 0;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #eee, #888);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.6);
+  background: linear-gradient(135deg, #ddd, #777);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.6);
   border: 1px solid rgba(0,0,0,0.2);
   z-index: 2;
 }
 
-/* Tonearm Arm */
+/* The arm */
 .tonearm {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 11px;
+  right: 9px;
   width: 4px;
-  height: 110px;
-  background: linear-gradient(to right, #999, #ddd, #666);
+  height: 105px;
+  background: linear-gradient(to right, #999, #eee, #666);
   border-radius: 2px;
   transform-origin: top center;
-  transform: rotate(-35deg); /* Rest: swung out to the right */
-  transition: transform 0.8s cubic-bezier(0.4, 1.2, 0.6, 1);
-  box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+  transform: rotate(-25deg); /* Rest: swings out to the right */
+  transition: transform 0.6s cubic-bezier(0.4, 1.2, 0.6, 1);
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.4);
 }
 
 .tonearm.playing { 
-  transform: rotate(15deg); /* Playing: swung onto the record */
+  transform: rotate(15deg); /* Playing: swings onto the record */
 }
 
-/* Counterweight */
-.tonearm::before {
+/* The headshell / cartridge */
+.tonearm::after {
   content: '';
   position: absolute;
-  top: 2px;
-  left: -4px;
-  width: 12px;
-  height: 18px;
-  background: linear-gradient(to right, #444, #888, #444);
-  border-radius: 3px;
-  box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
-}
-
-/* Headshell / Cartridge */
-.tonearm .cartridge {
-  position: absolute;
   bottom: -8px;
-  left: -6px;
-  width: 16px;
-  height: 20px;
+  left: -7px;
+  width: 18px;
+  height: 24px;
   background: linear-gradient(135deg, #eee, #888);
   border-radius: 2px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+  box-shadow: 0 3px 5px rgba(0,0,0,0.4);
   transform: rotate(-10deg);
 }
 
-/* Stylus / Needle */
-.tonearm .cartridge::after {
+/* The needle */
+.tonearm::before {
   content: '';
   position: absolute;
-  bottom: -4px;
-  left: 6px;
+  bottom: -12px;
+  left: 5px;
   width: 4px;
   height: 6px;
   background: #222;
-  border-radius: 0 0 2px 2px;
+  z-index: 2;
 }
 
 /* ── Info & Progress ── */
-.info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; z-index: 1; }
+.info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; z-index: 1; padding-left: 10px; }
 .np-label { font-size: 10px; color: var(--faint); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
 .np-title { font-size: 20px; font-weight: 700; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 12px rgba(255,255,255,.1); }
 .np-artist { font-size: 13px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
@@ -198,9 +184,9 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 
 /* ── Lyrics Box ── */
 .lyrics-container {
-  flex: 1.2; min-width: 200px; height: 180px; position: relative;
+  flex: 1.2; min-width: 200px; height: 160px; position: relative;
   overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
-  padding: 70px 10px;
+  padding: 60px 10px;
   scroll-behavior: smooth;
   mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
   -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
@@ -279,11 +265,10 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 @media (max-width: 768px) {
   .app-container { gap: 16px; }
   .deck { flex-direction: column; padding: 20px; gap: 16px; text-align: center; align-items: center; }
-  .turntable { width: 150px; height: 140px; margin-right: 0; }
-  .platter { width: 140px; height: 140px; }
+  .turntable { width: 140px; height: 140px; }
   .label { width: 48px; height: 48px; }
-  .tonearm-wrapper { right: -5px; top: 5px; transform: scale(0.85); transform-origin: top right; }
-  .info { width: 100%; }
+  .tonearm-assembly { right: -15px; top: 5px; transform: scale(0.85); transform-origin: top right; }
+  .info { width: 100%; padding-left: 0; }
   .np-title { font-size: 18px; }
   .lyrics-container { width: 100%; height: 120px; padding: 40px 10px; text-align: center; }
   .lyric-line { text-align: center; transform-origin: center center; }
@@ -321,12 +306,10 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
         </div>
       </div>
       
-      <!-- Realistic Tonearm Structure -->
-      <div class="tonearm-wrapper">
+      <!-- Tonearm anchored to the record -->
+      <div class="tonearm-assembly">
         <div class="tonearm-base"></div>
-        <div class="tonearm" id="tonearm">
-          <div class="cartridge"></div>
-        </div>
+        <div class="tonearm" id="tonearm"></div>
       </div>
     </div>
 
