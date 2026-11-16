@@ -94,7 +94,7 @@ a:hover{color:var(--cyan)}
 const DATA = {
   name: 'Rk',
   handle: 'rk',
-  role: 'developer · maker of random things',
+  role: 'Random Guy · maker of random things',
   tagline: 'bots · tools · small systems with big opinions',
   discordProfile: 'https://discord.com/users/1010224761936281680',
   socials: [
@@ -344,7 +344,7 @@ function createSnake(){
   box.className = 'game-box';
   box.innerHTML = '<div class="game-hud">snake · score: <span class="sc" id="snake-sc">0</span> · arrows/wasd · q to quit</div>';
   const pre = document.createElement('pre');
-  pre.style.color = 'var(--cyan)'; // Make snake pop
+  pre.style.color = 'var(--cyan)';
   box.appendChild(pre);
   out.appendChild(box);
   scr.scrollTop = scr.scrollHeight;
@@ -523,7 +523,7 @@ function createTTT(){
   const body = document.createElement('pre');
   body.style.fontSize = '16px';
   body.style.lineHeight = '1.4';
-  body.style.color = 'var(--cyan)'; // Make board pop
+  body.style.color = 'var(--cyan)';
   box.appendChild(hud);
   box.appendChild(body);
   out.appendChild(box);
@@ -644,7 +644,7 @@ function createHangman(){
   
   const art = document.createElement('pre');
   art.style.fontSize = '14px';
-  art.style.color = 'var(--amber)'; // Amber gallows
+  art.style.color = 'var(--amber)';
   art.style.textShadow = '0 0 8px rgba(255,203,92,.4)';
   
   const wordEl = document.createElement('div');
@@ -652,7 +652,7 @@ function createHangman(){
   wordEl.style.fontSize = '24px';
   wordEl.style.fontWeight = 'bold';
   wordEl.style.letterSpacing = '8px';
-  wordEl.style.color = 'var(--cyan)'; // Cyan letters
+  wordEl.style.color = 'var(--cyan)';
   wordEl.style.textShadow = '0 0 12px rgba(63,228,255,.4)';
   
   box.appendChild(hud); box.appendChild(art); box.appendChild(wordEl);
@@ -741,7 +741,7 @@ function banner(){
   line('<span class="bold">' + esc(DATA.name) + '</span> <span class="dim">—</span> <span class="violet">' + esc(DATA.role) + '</span>');
   line('<span class="dim">' + esc(DATA.tagline) + '</span>');
   blank();
-  line('type ' + runChip('help', 'help') + ' to look around · ' + runChip('projects', 'projects') + ' for my work · ' + runChip('games', 'games') + ' to play');
+  line('type ' + runChip('help', 'help') + ' to look around · ' + runChip('projects', 'projects') + ' for my work · ' + runChip('games', 'games') + ' to play · ' + runChip('music', 'music') + ' to listen');
   blank();
 }
 function skillLines(){
@@ -814,10 +814,7 @@ def(['help'], () => {
   blank();
   line('<span class="dim">tip: tab completes · ↑/↓ walks history · ctrl+L clears · esc exits overlays</span>');
 });
-
-// FIX 1: clear command now resets to banner
 def(['clear'], () => { out.innerHTML = ''; banner(); });
-
 def(['banner'], () => { out.innerHTML = ''; banner(); });
 def(['about'], () => { FILES['about.txt']().forEach(l => line(l)); blank(); line('<span class="dim">see also: ' + runChip('skills', 'skills') + ' · ' + runChip('projects', 'projects') + '</span>'); });
 def(['projects', 'work'], () => {
@@ -1109,14 +1106,11 @@ inp.addEventListener('keydown', e => {
   else if (e.key === 'ArrowUp') { e.preventDefault(); if (hi > 0) { hi--; inp.value = hist[hi] || ''; } }
   else if (e.key === 'ArrowDown') { e.preventDefault(); if (hi < hist.length) { hi++; inp.value = hist[hi] || ''; } }
   else if (e.key === 'Tab') { e.preventDefault(); complete(); }
-  
-  // FIX 2: Ctrl+L now resets to banner
   else if (e.ctrlKey && (e.key === 'l' || e.key === 'L')) { 
     e.preventDefault(); 
     out.innerHTML = ''; 
     banner(); 
   }
-  
   else if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) { echoInput(inp.value + '^C'); inp.value = ''; }
 });
 function complete(){
@@ -1191,7 +1185,7 @@ function skipBoot(){
   booting = false; finishBoot();
 }
 function finishBoot(){
-  out.innerHTML = ''; // Clears the boot text so the screen starts clean
+  out.innerHTML = '';
   banner();
   $('inline').hidden = false;
   if (matchMedia('(pointer:fine)').matches) inp.focus({ preventScroll: true });
