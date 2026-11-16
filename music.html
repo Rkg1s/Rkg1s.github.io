@@ -54,7 +54,7 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 [data-theme=paper] .deck { border-color: rgba(0,0,0,.1); box-shadow: none; }
 
 /* Visualizer Canvas */
-#viz { position: absolute; bottom: 0; left: 0; width: 100%; height: 60px; z-index: 0; pointer-events: none; opacity: .25; }
+#viz { position: absolute; bottom: 0; left: 0; width: 100%; height: 60px; z-index: 0; pointer-events: none; opacity: .15; }
 
 /* ── Turntable Area ── */
 .turntable { 
@@ -100,9 +100,9 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 /* ── Tonearm Assembly ── */
 .tonearm-assembly {
   position: absolute;
-  top: 10px;
-  right: -15px; /* Anchored to the top right edge of the record */
-  width: 30px;
+  top: 15px;
+  right: -12px; /* Anchored to the top right edge */
+  width: 40px;
   height: 150px;
   z-index: 3;
   pointer-events: none;
@@ -112,7 +112,7 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 .tonearm-base {
   position: absolute;
   top: 0;
-  right: 0;
+  right: 10px;
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -126,19 +126,19 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
 .tonearm {
   position: absolute;
   top: 11px;
-  right: 9px;
+  right: 19px;
   width: 4px;
-  height: 105px;
+  height: 90px; /* Shorter to avoid crossing text */
   background: linear-gradient(to right, #999, #eee, #666);
   border-radius: 2px;
   transform-origin: top center;
-  transform: rotate(-25deg); /* Rest: swings out to the right */
+  transform: rotate(-35deg); /* Rest: swung out to the right */
   transition: transform 0.6s cubic-bezier(0.4, 1.2, 0.6, 1);
   box-shadow: 2px 2px 5px rgba(0,0,0,0.4);
 }
 
 .tonearm.playing { 
-  transform: rotate(15deg); /* Playing: swings onto the record */
+  transform: rotate(-5deg); /* Playing: swings onto the record edge */
 }
 
 /* The headshell / cartridge */
@@ -267,7 +267,7 @@ h1 { font-size: 16px; color: var(--cyan); font-weight: 700; letter-spacing: .5px
   .deck { flex-direction: column; padding: 20px; gap: 16px; text-align: center; align-items: center; }
   .turntable { width: 140px; height: 140px; }
   .label { width: 48px; height: 48px; }
-  .tonearm-assembly { right: -15px; top: 5px; transform: scale(0.85); transform-origin: top right; }
+  .tonearm-assembly { right: -8px; top: 10px; transform: scale(0.85); transform-origin: top right; }
   .info { width: 100%; padding-left: 0; }
   .np-title { font-size: 18px; }
   .lyrics-container { width: 100%; height: 120px; padding: 40px 10px; text-align: center; }
